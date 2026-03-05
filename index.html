@@ -5,161 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Tunnel Rush</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body {
-    width: 100%; height: 100%;
-    background: #000;
-    overflow: hidden;
-    font-family: 'Courier New', monospace;
-    touch-action: none;
-  }
-  canvas { display: block; margin: 0 auto; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; background:#000; overflow:hidden; font-family:'Courier New',monospace; touch-action:none; }
+  canvas { display:block; }
 
-  /* ── Overlays ── */
   .overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.82);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    z-index: 10;
-    padding: 20px;
-    text-align: center;
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.85);
+    flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; z-index:10; padding:20px; text-align:center;
   }
-  .overlay.show { display: flex; }
-
+  .overlay.show { display:flex; }
   .ov-title {
-    font-size: clamp(2rem, 8vw, 3.5rem);
-    font-weight: 900;
-    letter-spacing: 0.12em;
-    text-shadow: 0 0 20px currentColor, 0 0 60px currentColor;
-    line-height: 1.1;
+    font-size:clamp(2rem,8vw,3.5rem); font-weight:900;
+    letter-spacing:0.12em; line-height:1.1;
+    text-shadow:0 0 20px currentColor, 0 0 60px currentColor;
   }
-  .ov-sub {
-    font-size: clamp(0.75rem, 2.5vw, 0.95rem);
-    color: rgba(255,255,255,0.55);
-    letter-spacing: 0.06em;
-    max-width: 360px;
-  }
-  .ov-score {
-    font-size: clamp(1rem, 3.5vw, 1.5rem);
-    color: #fff;
-    letter-spacing: 0.08em;
-  }
-  .ov-best {
-    font-size: clamp(0.75rem, 2.5vw, 0.9rem);
-    color: rgba(255,255,255,0.45);
-  }
+  .ov-sub { font-size:clamp(0.75rem,2.5vw,0.95rem); color:rgba(255,255,255,0.5); letter-spacing:0.06em; max-width:360px; }
+  .ov-score { font-size:clamp(1rem,3.5vw,1.5rem); color:#fff; letter-spacing:0.08em; }
+  .ov-best  { font-size:clamp(0.7rem,2.2vw,0.85rem); color:rgba(255,255,255,0.38); }
   .ov-btn {
-    margin-top: 6px;
-    padding: 12px 36px;
-    border: 2px solid currentColor;
-    background: transparent;
-    color: inherit;
-    font-family: 'Courier New', monospace;
-    font-size: clamp(0.8rem, 2.5vw, 1rem);
-    font-weight: bold;
-    letter-spacing: 0.14em;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background 0.18s;
-    text-shadow: 0 0 8px currentColor;
-    box-shadow: 0 0 12px currentColor;
+    padding:12px 36px; border:2px solid currentColor; background:transparent;
+    color:inherit; font-family:'Courier New',monospace; font-size:clamp(0.8rem,2.5vw,1rem);
+    font-weight:bold; letter-spacing:0.14em; cursor:pointer; border-radius:4px;
+    text-shadow:0 0 8px currentColor; box-shadow:0 0 12px currentColor;
+    transition:background .18s;
   }
-  .ov-btn:hover, .ov-btn:active { background: rgba(255,255,255,0.10); }
-  .ov-btn-sm {
-    padding: 8px 22px;
-    font-size: clamp(0.65rem, 2vw, 0.78rem);
-    opacity: 0.65;
-  }
-
-  /* ── Auth form ── */
-  .auth-form {
-    display: flex; flex-direction: column; gap: 8px;
-    width: 100%; max-width: 280px;
-  }
+  .ov-btn:hover { background:rgba(255,255,255,0.10); }
+  .ov-btn-sm { padding:7px 18px; font-size:clamp(0.62rem,1.8vw,0.75rem); opacity:0.65; }
+  .auth-form { display:flex; flex-direction:column; gap:8px; width:100%; max-width:280px; }
   .auth-form input {
-    padding: 10px 14px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 4px;
-    color: #fff;
-    font-family: 'Courier New', monospace;
-    font-size: 0.85rem;
-    outline: none;
-    width: 100%;
+    padding:10px 14px; background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.18); border-radius:4px;
+    color:#fff; font-family:'Courier New',monospace; font-size:0.85rem; outline:none;
   }
-  .auth-form input:focus { border-color: rgba(255,255,255,0.45); }
-  .auth-msg { font-size: 0.75rem; min-height: 16px; }
-
-  /* ── Ranking ── */
-  .rank-table {
-    width: 100%; max-width: 340px;
-    border-collapse: collapse;
-    font-size: clamp(0.65rem, 2vw, 0.8rem);
-  }
-  .rank-table td { padding: 5px 8px; }
-  .rank-pos { color: rgba(255,255,255,0.4); width: 30px; text-align: center; }
-  .rank-name { color: rgba(255,255,255,0.8); }
-  .rank-score { color: #fff; font-weight: bold; text-align: right; }
-  .rank-me td { color: #fff !important; }
-
-  /* ── HUD in-game ── */
+  .auth-form input:focus { border-color:rgba(255,255,255,0.45); }
+  .auth-msg { font-size:0.72rem; min-height:16px; }
+  .rank-table { width:100%; max-width:320px; border-collapse:collapse; font-size:clamp(0.62rem,1.9vw,0.78rem); }
+  .rank-table td { padding:5px 7px; }
+  .rank-pos  { color:rgba(255,255,255,0.4); width:28px; text-align:center; }
+  .rank-name { color:rgba(255,255,255,0.8); }
+  .rank-sc   { color:#fff; font-weight:bold; text-align:right; }
+  .rank-me td { color:#fff !important; }
   #hud {
-    position: fixed; top: 0; left: 0; right: 0;
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 16px;
-    pointer-events: none;
-    z-index: 5;
+    position:fixed; top:0; left:0; right:0;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:10px 16px; pointer-events:none; z-index:5;
   }
-  #hudScore {
-    font-size: clamp(1.1rem, 3.5vw, 1.6rem);
-    font-weight: bold;
-    letter-spacing: 0.08em;
-    text-shadow: 0 0 10px currentColor;
-  }
-  #hudPhase {
-    font-size: clamp(0.6rem, 2vw, 0.78rem);
-    color: rgba(255,255,255,0.4);
-    letter-spacing: 0.12em;
-  }
-  #hudBest {
-    font-size: clamp(0.6rem, 2vw, 0.72rem);
-    color: rgba(255,255,255,0.3);
-    letter-spacing: 0.06em;
-  }
+  #hudScore { font-size:clamp(1.1rem,3.5vw,1.6rem); font-weight:bold; letter-spacing:0.08em; text-shadow:0 0 10px currentColor; }
+  #hudPhase { font-size:clamp(0.58rem,1.8vw,0.72rem); color:rgba(255,255,255,0.38); letter-spacing:0.12em; margin-top:2px; }
+  #hudBest  { font-size:clamp(0.58rem,1.8vw,0.7rem);  color:rgba(255,255,255,0.28); letter-spacing:0.06em; text-align:right; }
+  #ctrlHint { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:clamp(0.55rem,1.6vw,0.68rem); color:rgba(255,255,255,0.22); letter-spacing:0.1em; pointer-events:none; z-index:5; }
 </style>
 </head>
 <body>
 
 <canvas id="canvas"></canvas>
 
-<!-- HUD -->
 <div id="hud" style="display:none">
   <div>
     <div id="hudScore" style="color:#00ffff">0</div>
-    <div id="hudPhase">FASE 1</div>
+    <div id="hudPhase">FASE 1 — NEXUS</div>
   </div>
   <div id="hudBest"></div>
 </div>
+<div id="ctrlHint">◀ A / ← &nbsp;&nbsp; D / → ▶ &nbsp;|&nbsp; ARRASTE</div>
 
-<!-- Tela inicial -->
+<!-- Start -->
 <div class="overlay show" id="ovStart">
   <div class="ov-title" style="color:#00ffff">TUNNEL<br>RUSH</div>
-  <div class="ov-sub">Sobreviva o máximo que puder no túnel infinito</div>
-  <div id="ovStartBestRow" style="display:none">
-    <div class="ov-best" id="ovStartBest"></div>
-  </div>
+  <div class="ov-sub">Sobreviva no túnel infinito. O túnel gira — você fica na base.</div>
+  <div id="ovBestRow" style="display:none"><div class="ov-best" id="ovBestTxt"></div></div>
   <button class="ov-btn" style="color:#00ffff" onclick="startGame()">▶ JOGAR</button>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px">
-    <button class="ov-btn ov-btn-sm" style="color:#ff44aa" onclick="showOverlay('ovAuth')">🔑 ENTRAR / CADASTRAR</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:2px">
+    <button class="ov-btn ov-btn-sm" style="color:#ff44aa" onclick="showOv('ovAuth')">🔑 ENTRAR</button>
     <button class="ov-btn ov-btn-sm" style="color:#ffd700" onclick="showRanking()">🏆 RANKING</button>
   </div>
-  <div id="userBadge" style="display:none;margin-top:6px;font-size:0.72rem;color:rgba(0,255,255,0.55);letter-spacing:0.06em">
+  <div id="userBadge" style="display:none;margin-top:6px;font-size:0.72rem;color:rgba(0,255,255,0.55)">
     👤 <span id="badgeUser">—</span>
-    &nbsp;<button onclick="doSignOut()" style="background:none;border:none;color:rgba(255,80,80,0.6);cursor:pointer;font-family:'Courier New',monospace;font-size:0.65rem">Sair</button>
+    &nbsp;<button onclick="doSignOut()" style="background:none;border:none;color:rgba(255,80,80,0.6);cursor:pointer;font-family:'Courier New',monospace;font-size:0.62rem">Sair</button>
   </div>
 </div>
 
@@ -168,779 +92,754 @@
   <div class="ov-title" style="color:#ff2244">GAME<br>OVER</div>
   <div class="ov-score">Score: <span id="goScore">0</span></div>
   <div class="ov-best" id="goBest"></div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px">
     <button class="ov-btn" style="color:#00ffff" onclick="startGame()">↺ TENTAR NOVAMENTE</button>
     <button class="ov-btn ov-btn-sm" style="color:#ffd700" onclick="showRanking()">🏆 RANKING</button>
   </div>
-  <div id="goSaveMsg" style="font-size:0.7rem;color:rgba(255,255,255,0.35);margin-top:4px"></div>
+  <div id="goSaveMsg" style="font-size:0.68rem;color:rgba(255,255,255,0.3);margin-top:4px"></div>
 </div>
 
 <!-- Auth -->
 <div class="overlay" id="ovAuth">
-  <div class="ov-title" style="font-size:1.8rem;color:#ff44aa">AUTH</div>
-  <div style="display:flex;gap:0;border:1px solid rgba(255,255,255,0.15);border-radius:4px;overflow:hidden;margin-bottom:4px">
-    <button id="tabLogin"  onclick="switchTab('login')"  style="flex:1;padding:8px;background:rgba(255,68,170,0.18);border:none;color:#fff;cursor:pointer;font-family:'Courier New',monospace;font-size:0.78rem;letter-spacing:0.06em">ENTRAR</button>
-    <button id="tabSignup" onclick="switchTab('signup')" style="flex:1;padding:8px;background:transparent;border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-family:'Courier New',monospace;font-size:0.78rem;letter-spacing:0.06em">CADASTRAR</button>
+  <div class="ov-title" style="font-size:1.7rem;color:#ff44aa">AUTH</div>
+  <div style="display:flex;border:1px solid rgba(255,255,255,0.14);border-radius:4px;overflow:hidden;margin-bottom:2px">
+    <button id="tabLogin"  onclick="switchTab('login')"  style="flex:1;padding:8px;background:rgba(255,68,170,0.18);border:none;color:#fff;cursor:pointer;font-family:'Courier New',monospace;font-size:0.75rem;letter-spacing:0.06em">ENTRAR</button>
+    <button id="tabSignup" onclick="switchTab('signup')" style="flex:1;padding:8px;background:transparent;border:none;color:rgba(255,255,255,0.38);cursor:pointer;font-family:'Courier New',monospace;font-size:0.75rem;letter-spacing:0.06em">CADASTRAR</button>
   </div>
-  <!-- Login -->
   <div id="formLogin" class="auth-form">
-    <input type="email"    id="loginEmail" placeholder="E-mail" autocomplete="email">
-    <input type="password" id="loginPass"  placeholder="Senha"  autocomplete="current-password">
+    <input type="email"    id="loginEmail" placeholder="E-mail"   autocomplete="email">
+    <input type="password" id="loginPass"  placeholder="Senha"    autocomplete="current-password">
     <button class="ov-btn" style="color:#ff44aa" onclick="doLogin()">ENTRAR</button>
     <div class="auth-msg" id="loginMsg" style="color:#ff6688"></div>
   </div>
-  <!-- Signup -->
   <div id="formSignup" class="auth-form" style="display:none">
     <input type="text"     id="signupUser"  placeholder="Nome de usuário" autocomplete="username">
     <input type="email"    id="signupEmail" placeholder="E-mail"          autocomplete="email">
-    <input type="password" id="signupPass"  placeholder="Senha (6+ chars)" autocomplete="new-password">
+    <input type="password" id="signupPass"  placeholder="Senha (6+)"      autocomplete="new-password">
     <button class="ov-btn" style="color:#00ff88" onclick="doSignup()">CRIAR CONTA</button>
     <div class="auth-msg" id="signupMsg" style="color:#44ff88"></div>
   </div>
-  <button class="ov-btn ov-btn-sm" style="color:rgba(255,255,255,0.35);margin-top:6px" onclick="showOverlay('ovStart')">← VOLTAR</button>
+  <button class="ov-btn ov-btn-sm" style="color:rgba(255,255,255,0.3);margin-top:4px" onclick="showOv('ovStart')">← VOLTAR</button>
 </div>
 
 <!-- Ranking -->
 <div class="overlay" id="ovRanking">
-  <div class="ov-title" style="font-size:1.8rem;color:#ffd700">🏆 RANKING</div>
-  <div id="rankingList" style="width:100%;max-width:340px;min-height:80px;display:flex;align-items:center;justify-content:center">
+  <div class="ov-title" style="font-size:1.7rem;color:#ffd700">🏆 RANKING</div>
+  <div id="rankList" style="width:100%;max-width:320px;min-height:60px;display:flex;align-items:center;justify-content:center">
     <div class="ov-sub">Carregando...</div>
   </div>
-  <button class="ov-btn ov-btn-sm" style="color:rgba(255,255,255,0.35);margin-top:8px" onclick="showOverlay('ovStart')">← VOLTAR</button>
+  <button class="ov-btn ov-btn-sm" style="color:rgba(255,255,255,0.3);margin-top:6px" onclick="showOv('ovStart')">← VOLTAR</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// ═══════════════════════════════════════════════════════
-//  TUNNEL RUSH  —  Sci-Fi Neon Tunnel  |  v1.0
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  TUNNEL RUSH  v2.0  —  Nave fixa na base, túnel gira
+// ═══════════════════════════════════════════════════════════════
 
 const canvas = document.getElementById('canvas');
 const ctx    = canvas.getContext('2d');
 
-// ── Canvas sizing ────────────────────────────────────
 let W, H, CX, CY;
-function resizeCanvas() {
+function resize() {
   W = canvas.width  = window.innerWidth;
   H = canvas.height = window.innerHeight;
   CX = W / 2; CY = H / 2;
 }
-window.addEventListener('resize', () => { resizeCanvas(); });
-resizeCanvas();
+window.addEventListener('resize', resize);
+resize();
 
-// ── Fases (tema de cor) ──────────────────────────────
+// ── Fases ────────────────────────────────────────────────────────
 const PHASES = [
-  { name: 'NEXUS',    col: '#00ffff', col2: '#0055ff', wall: '#001a33' },
-  { name: 'INFERNO',  col: '#ff3300', col2: '#ff9900', wall: '#1a0500' },
-  { name: 'ACID',     col: '#aaff00', col2: '#00ff44', wall: '#061a00' },
-  { name: 'VORTEX',   col: '#cc00ff', col2: '#ff00aa', wall: '#120020' },
-  { name: 'SOLAR',    col: '#ffd700', col2: '#ff6600', wall: '#1a1000' },
-  { name: 'FREEZE',   col: '#88eeff', col2: '#aaaaff', wall: '#000d1a' },
+  { name:'NEXUS',   col:'#00ffff', col2:'#0055ff', wall:'#001833' },
+  { name:'INFERNO', col:'#ff3300', col2:'#ff9900', wall:'#1a0500' },
+  { name:'ACID',    col:'#aaff00', col2:'#00ff44', wall:'#061a00' },
+  { name:'VORTEX',  col:'#cc00ff', col2:'#ff00aa', wall:'#120020' },
+  { name:'SOLAR',   col:'#ffd700', col2:'#ff6600', wall:'#1a1000' },
+  { name:'FREEZE',  col:'#88eeff', col2:'#aaaaff', wall:'#000d1a' },
 ];
 
-// ── Estado do jogo ───────────────────────────────────
-let state = 'start'; // 'start' | 'playing' | 'dead'
-let score = 0, bestScore = 0;
-let speed, phaseIdx, phaseTimer, totalTime;
-let particles = [];
-let obstacles = [];
-let tunnelRings = [];
-let playerAngle = 0;  // ângulo do jogador dentro do túnel (0-360)
-let playerDead = false;
-let deathFlash = 0;
-let bgStarT = 0;
+// ── Constantes ───────────────────────────────────────────────────
+const FOV      = 380;
+const ZNEAR    = 55;
+const ZFAR     = 1600;
+const RING_GAP = 100;
+const BASE_SPD = 300;
+const PHASE_DUR = 30;
+// Raio do túnel na tela em relação ao menor lado
+const T_RAD_RATIO = 0.43;
+// O jogador fica na borda INFERIOR do túnel visível
+const PLAYER_ANGLE_DEFAULT = Math.PI / 2; // baixo (90°)
 
-// ── Constantes ───────────────────────────────────────
-const BASE_SPEED   = 320;  // px/s de distância no túnel
-const PHASE_DUR    = 30;   // segundos por fase
-const RING_GAP     = 90;   // distância entre anéis no espaço 3D
-const RING_COUNT   = 18;   // anéis visíveis
-const TUNNEL_R     = Math.min(W, H) * 0.42; // raio máximo do túnel
-const PLAYER_R_RAT = 0.06; // raio do jogador em relação ao tunnel
-const PLAYER_DIST  = 0.72; // distância radial dentro do túnel (0=centro, 1=borda)
+// ── Estado ───────────────────────────────────────────────────────
+let state = 'idle';
+let score, bestScore, totalTime, speed, phaseIdx, phaseTimer;
+let tunnelAngle = 0;   // ângulo de rotação do túnel (o jogador fica parado)
+let obstacles = [], particles = [], floatMsgs = [];
+let deathFlash = 0, playerDead = false;
+let shipTilt = 0;      // inclinação visual da nave
+let enginePulse = 0;
 
-// ── Supabase ─────────────────────────────────────────
+// ── Supabase ─────────────────────────────────────────────────────
 const SUPA_URL = 'https://tzxdkkoajxwgkphzixyr.supabase.co';
 const SUPA_KEY = 'sb_publishable_7T9duH_ZzV7eOywjYPekTg_zLOk9bDx';
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 let supaUser = null, supaProfile = null;
 
-// ── Input ────────────────────────────────────────────
+// ── Input ────────────────────────────────────────────────────────
 let keyLeft = false, keyRight = false;
-let touchDeltaX = 0, touchStartX = 0, touchActive = false;
+let touchDX = 0, lastTouchX = 0, isTouching = false;
 
 window.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') keyLeft  = true;
-  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keyRight = true;
-  if ((e.key === ' ' || e.key === 'Enter') && state !== 'playing') startGame();
+  if (e.key==='ArrowLeft' ||e.key==='a'||e.key==='A') keyLeft  = true;
+  if (e.key==='ArrowRight'||e.key==='d'||e.key==='D') keyRight = true;
+  if ((e.key===' '||e.key==='Enter') && state!=='playing') startGame();
 });
 window.addEventListener('keyup', e => {
-  if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') keyLeft  = false;
-  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keyRight = false;
+  if (e.key==='ArrowLeft' ||e.key==='a'||e.key==='A') keyLeft  = false;
+  if (e.key==='ArrowRight'||e.key==='d'||e.key==='D') keyRight = false;
 });
-
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  if (state !== 'playing') { startGame(); return; }
-  touchStartX = e.touches[0].clientX;
-  touchActive = true;
-  touchDeltaX = 0;
-}, { passive: false });
-
+  if (state!=='playing') { startGame(); return; }
+  lastTouchX = e.touches[0].clientX;
+  isTouching = true; touchDX = 0;
+}, {passive:false});
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
-  if (!touchActive) return;
-  touchDeltaX = e.touches[0].clientX - touchStartX;
-  touchStartX = e.touches[0].clientX;
-}, { passive: false });
-
+  if (!isTouching) return;
+  touchDX = e.touches[0].clientX - lastTouchX;
+  lastTouchX = e.touches[0].clientX;
+}, {passive:false});
 canvas.addEventListener('touchend', e => {
   e.preventDefault();
-  touchActive = false;
-  touchDeltaX = 0;
-}, { passive: false });
+  isTouching = false; touchDX = 0;
+}, {passive:false});
+canvas.addEventListener('click', () => { if (state!=='playing') startGame(); });
 
-canvas.addEventListener('click', e => {
-  if (state !== 'playing') startGame();
-});
+// ── Overlays ─────────────────────────────────────────────────────
+function showOv(id) { document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('show')); document.getElementById(id).classList.add('show'); }
+function hideOvs()  { document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('show')); }
 
-// ── Overlay helpers ──────────────────────────────────
-function showOverlay(id) {
-  document.querySelectorAll('.overlay').forEach(o => o.classList.remove('show'));
-  document.getElementById(id).classList.add('show');
+// ── Partículas ───────────────────────────────────────────────────
+class Particle {
+  constructor(x,y,vx,vy,col,life,r) { this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.col=col;this.life=life;this.maxLife=life;this.r=r; }
+  update(dt) { this.x+=this.vx*dt; this.y+=this.vy*dt; this.vy+=55*dt; this.life-=dt; }
+  draw() {
+    const a=Math.max(0,this.life/this.maxLife);
+    ctx.save(); ctx.globalAlpha=a; ctx.fillStyle=this.col; ctx.shadowColor=this.col; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(this.x,this.y,this.r*a,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
 }
-function hideOverlays() {
-  document.querySelectorAll('.overlay').forEach(o => o.classList.remove('show'));
+function spawnBurst(x,y,col,n=24) {
+  for(let i=0;i<n;i++) {
+    const a=Math.random()*Math.PI*2, sp=80+Math.random()*280;
+    particles.push(new Particle(x,y,Math.cos(a)*sp,Math.sin(a)*sp,col,0.5+Math.random()*0.8,2+Math.random()*5));
+  }
+}
+function spawnTrail(x,y,col) {
+  particles.push(new Particle(x,y,(Math.random()-.5)*20,(Math.random()-.5)*20+12,col,0.10+Math.random()*0.10,1+Math.random()*2.5));
 }
 
-// ── RNG determinístico (para patterns) ──────────────
-function makeRNG(seed) {
-  let s = ((seed + 1) * 2654435761) >>> 0;
-  return () => { s ^= s<<13; s>>>=0; s ^= s>>17; s>>>=0; s ^= s<<5; s>>>=0; return s/0xFFFFFFFF; };
+// ── Float messages ───────────────────────────────────────────────
+function addFloat(txt, col) {
+  floatMsgs.push({ txt, col, y: CY*0.28, alpha:1.2, vy:-38 });
 }
 
-// ── Obstáculos 3D ────────────────────────────────────
-// Cada obstáculo tem uma posição Z no túnel infinito.
-// Quando Z chega a 0 (na câmera), colidiu.
-// Projetamos em perspectiva: escala = fov / z
-
-const FOV  = 350;  // distância focal
-const ZNEAR = 60;  // z mínimo (perto da câmera = colisão)
-const ZFAR  = RING_COUNT * RING_GAP; // z máximo (desenhado mais longe)
-
+// ── Obstáculos ───────────────────────────────────────────────────
+// Tipos: 0=barra dupla com gap, 1=triângulos espinhos, 2=quadrado 3D, 3=anel com gap
 class Obstacle {
   constructor(z) {
-    this.z    = z;
-    this.type = Math.floor(Math.random() * 4); // 0=barra, 1=cruzeta, 2=espiral, 3=parede_gap
-    this.rot  = Math.random() * Math.PI * 2;   // rotação inicial
-    this.rotSpd = (Math.random() - 0.5) * 1.8; // velocidade de rotação
-    this.gap  = Math.PI * (0.38 + Math.random() * 0.28); // tamanho do gap (tipo 3)
+    this.z   = z;
+    this.type = Math.floor(Math.random() * 4);
+    this.rot  = Math.random() * Math.PI * 2;
+    this.rotSpd = (Math.random() - 0.5) * 1.6;
+    // gap para tipos com buraco
     this.gapAngle = Math.random() * Math.PI * 2;
+    this.gapSize  = Math.PI * (0.30 + Math.random() * 0.22);  // largura do gap
     this.dead = false;
   }
-
   update(dt, spd) {
-    this.z -= spd * dt;
+    this.z   -= spd * dt;
     this.rot += this.rotSpd * dt;
-    if (this.z < -ZNEAR * 2) this.dead = true;
+    if (this.z < -ZNEAR * 3) this.dead = true;
   }
-
-  // Projeta z para escala na tela
-  get scale() { return FOV / Math.max(this.z, 1); }
-  get screenR() { return Math.min(W, H) * 0.5 * this.scale / (FOV / Math.min(W, H) * 0.5); }
-
   draw(col, col2) {
-    if (this.z <= 0) return;
+    if (this.z <= 1) return;
     const sc = FOV / this.z;
-    const r  = Math.min(W, H) * 0.46 * sc; // raio do túnel nessa profundidade
-    if (r < 2) return;
-
-    const alpha = Math.min(1, (this.z - ZNEAR) / (ZNEAR * 2));
+    const r  = Math.min(W, H) * T_RAD_RATIO * sc;
+    if (r < 3 || r > Math.max(W,H) * 3) return;
+    const alpha = Math.min(1, (this.z - ZNEAR) / (ZNEAR * 1.8)) * 0.96;
     if (alpha <= 0) return;
+    const lw = Math.max(2, 5 * sc);
 
     ctx.save();
-    ctx.globalAlpha = alpha;
     ctx.translate(CX, CY);
     ctx.rotate(this.rot);
-    ctx.strokeStyle = col;
-    ctx.fillStyle   = col;
-    ctx.shadowColor = col;
-    ctx.shadowBlur  = 18;
-    ctx.lineWidth   = Math.max(1.5, 4 * sc);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = col; ctx.fillStyle = col;
+    ctx.shadowColor = col; ctx.shadowBlur = 18 + 10 * sc;
+    ctx.lineWidth   = lw;
 
-    switch (this.type) {
-      case 0: // Barra horizontal
+    switch(this.type) {
+      case 0: { // Barras duplas horizontais com gap no centro
+        const barH = r * 0.18;
+        const gap  = r * 0.30; // espaço no meio
+        // Barra da esquerda
         ctx.beginPath();
-        ctx.moveTo(-r, 0); ctx.lineTo(r, 0);
-        ctx.stroke();
-        // Espessura visual
-        ctx.globalAlpha = alpha * 0.35;
-        ctx.fillRect(-r, -ctx.lineWidth * 1.5, r * 2, ctx.lineWidth * 3);
+        ctx.rect(-r, -barH/2, r - gap, barH);
+        ctx.fill();
+        // Barra da direita
+        ctx.beginPath();
+        ctx.rect(gap, -barH/2, r - gap, barH);
+        ctx.fill();
+        // Efeito 3D: face superior mais clara
+        ctx.globalAlpha = alpha * 0.45;
+        ctx.fillStyle = col2;
+        ctx.fillRect(-r, -barH/2 - barH*0.35, r-gap, barH*0.35);
+        ctx.fillRect(gap, -barH/2 - barH*0.35, r-gap, barH*0.35);
+        // Bordas neon
+        ctx.globalAlpha = alpha * 0.8;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-r, -barH/2, r-gap, 2);
+        ctx.fillRect(gap, -barH/2, r-gap, 2);
         break;
-
-      case 1: // Cruzeta (+)
-        ctx.lineWidth = Math.max(1.5, 3 * sc);
-        for (let i = 0; i < 2; i++) {
+      }
+      case 1: { // Triângulos espinhos (4 lados, como original)
+        const nSpikes = 4;
+        const spikeLen = r * 0.55;
+        const spikeW   = r * 0.14;
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < nSpikes; i++) {
+          ctx.save();
+          ctx.rotate(i * Math.PI * 2 / nSpikes);
+          // Triângulo apontando para o centro
+          const tip  = spikeLen;
+          const base = r;
           ctx.beginPath();
-          ctx.moveTo(-r, 0); ctx.lineTo(r, 0);
+          ctx.moveTo(-spikeW, base);
+          ctx.lineTo(spikeW, base);
+          ctx.lineTo(0, base - tip);
+          ctx.closePath();
+          ctx.fill();
+          // Brilho na borda
+          ctx.strokeStyle = col2; ctx.shadowColor = col2;
           ctx.stroke();
-          ctx.rotate(Math.PI / 2);
+          // Face interna mais clara
+          ctx.globalAlpha = alpha * 0.50;
+          ctx.fillStyle = col2;
+          ctx.beginPath();
+          ctx.moveTo(0, base);
+          ctx.lineTo(spikeW * 0.4, base);
+          ctx.lineTo(0, base - tip * 0.6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
         }
         break;
-
-      case 2: // Espiral / raios
-        ctx.lineWidth = Math.max(1.2, 2.5 * sc);
-        const nRays = 3;
-        for (let i = 0; i < nRays; i++) {
-          ctx.rotate(Math.PI * 2 / nRays);
-          ctx.beginPath();
-          // Raio da borda ao centro
-          ctx.moveTo(0, -r * 0.28);
-          ctx.lineTo(0, -r);
-          ctx.stroke();
-          // Arco nas pontas
-          ctx.beginPath();
-          ctx.arc(0, -r * 0.7, r * 0.22, 0, Math.PI * 1.1);
-          ctx.stroke();
-        }
-        break;
-
-      case 3: // Parede circular com gap
-        ctx.lineWidth = Math.max(2, 5 * sc);
+      }
+      case 2: { // Quadrado 3D no centro com gap nos cantos
+        const sq = r * 0.52;
+        const depth = sq * 0.28;
+        // Frente do cubo
         ctx.beginPath();
-        const gapStart = this.gapAngle - this.gap / 2;
-        const gapEnd   = this.gapAngle + this.gap / 2;
-        ctx.arc(0, 0, r * 0.88, gapEnd, gapStart + Math.PI * 2);
+        ctx.rect(-sq/2, -sq/2, sq, sq);
+        ctx.fill();
+        ctx.strokeStyle = col2; ctx.lineWidth = lw * 0.6; ctx.stroke();
+        // Face superior (3D)
+        ctx.globalAlpha = alpha * 0.55;
+        ctx.fillStyle = col2;
+        ctx.beginPath();
+        ctx.moveTo(-sq/2, -sq/2);
+        ctx.lineTo(-sq/2 + depth, -sq/2 - depth);
+        ctx.lineTo(sq/2  + depth, -sq/2 - depth);
+        ctx.lineTo(sq/2,  -sq/2);
+        ctx.closePath(); ctx.fill();
+        // Face direita (3D)
+        ctx.beginPath();
+        ctx.moveTo(sq/2, -sq/2);
+        ctx.lineTo(sq/2 + depth, -sq/2 - depth);
+        ctx.lineTo(sq/2 + depth,  sq/2 - depth);
+        ctx.lineTo(sq/2,  sq/2);
+        ctx.closePath(); ctx.fill();
+        // Borda frontal brilhante
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+        ctx.strokeRect(-sq/2, -sq/2, sq, sq);
+        break;
+      }
+      case 3: { // Anel com gap (o mais clássico)
+        const gS = this.gapAngle - this.gapSize / 2;
+        const gE = this.gapAngle + this.gapSize / 2;
+        ctx.lineWidth = lw * 1.3;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.82, gE, gS + Math.PI * 2);
         ctx.stroke();
-        // Bordas do gap com cor secundária
-        ctx.strokeStyle = col2;
-        ctx.shadowColor = col2;
-        ctx.lineWidth   = Math.max(1.5, 3 * sc);
-        [gapStart, gapEnd].forEach(a => {
-          const ex = Math.cos(a) * r * 0.88, ey = Math.sin(a) * r * 0.88;
+        // Bordas do gap neon col2
+        ctx.strokeStyle = col2; ctx.shadowColor = col2; ctx.lineWidth = lw * 0.8;
+        [[gS, gE], [gE, gS + Math.PI*2]].forEach(([a]) => {
+          const ex = Math.cos(a) * r * 0.82;
+          const ey = Math.sin(a) * r * 0.82;
           ctx.beginPath();
-          ctx.moveTo(ex * 0.7, ey * 0.7);
+          ctx.moveTo(ex * 0.62, ey * 0.62);
           ctx.lineTo(ex, ey);
           ctx.stroke();
         });
+        // Inner ring menor
+        ctx.globalAlpha = alpha * 0.30;
+        ctx.strokeStyle = col; ctx.lineWidth = lw * 0.4;
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, Math.PI*2); ctx.stroke();
         break;
+      }
     }
-
     ctx.restore();
   }
 
-  // Checar colisão com o jogador
-  collides(pAngle) {
-    if (this.z > ZNEAR * 3 || this.z < 0) return false;
-    const proximity = 1 - Math.max(0, (this.z - ZNEAR) / (ZNEAR * 1.5));
-    if (proximity < 0.35) return false;
+  // Colisão: verifica se o jogador (sempre na base do túnel = PI/2 - tunnelAngle)
+  // está na zona de perigo do obstáculo
+  collides(tAngle) {
+    if (this.z > ZNEAR * 3.5 || this.z < 0) return false;
+    const prox = 1 - Math.max(0, (this.z - ZNEAR) / (ZNEAR * 1.8));
+    if (prox < 0.28) return false;
 
-    switch (this.type) {
-      case 0: { // Barra horizontal: zona de perigo = 30° em torno de 0° e 180°
-        const a = ((pAngle - this.rot) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-        const safe = Math.PI * 0.18; // 32 graus de cada lado = zona segura (cima/baixo)
-        return !((a < safe || a > Math.PI * 2 - safe) || (a > Math.PI - safe && a < Math.PI + safe));
+    // Ângulo do jogador no referencial do obstáculo
+    const a = norm(PLAYER_ANGLE_DEFAULT - tAngle - this.rot);
+
+    switch(this.type) {
+      case 0: { // Barras: perigoso exceto nas zonas do gap (topo/baixo do anel)
+        // Gap fica no topo e na base (0° e 180°)
+        const safeZone = Math.PI * 0.22;
+        return !( inZone(a, 0, safeZone) || inZone(a, Math.PI, safeZone) );
       }
-      case 1: { // Cruzeta: 4 braços
-        const a = ((pAngle - this.rot) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-        const safe = Math.PI * 0.20;
-        const zones = [0, Math.PI/2, Math.PI, Math.PI*3/2];
-        return !zones.some(z => { const d = Math.abs(((a - z + Math.PI) % (Math.PI*2)) - Math.PI); return d < safe; });
-      }
-      case 2: { // Raios: 3 raios a 120°
-        const a = ((pAngle - this.rot) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-        const safe = Math.PI * 0.22;
-        for (let i = 0; i < 3; i++) {
-          const z = i * Math.PI * 2 / 3;
-          const d = Math.abs(((a - z + Math.PI) % (Math.PI*2)) - Math.PI);
-          if (d < safe) return true;
+      case 1: { // Triângulos: 4 espinhos em 0, 90, 180, 270°; safe nos entre-meios
+        const spikeW = Math.PI * 0.23;
+        for (let i = 0; i < 4; i++) {
+          if (inZone(a, i * Math.PI / 2, spikeW)) return true;
         }
         return false;
       }
-      case 3: { // Parede com gap: tudo colide exceto o gap
-        const a = ((pAngle - this.rot) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-        const gapS = ((this.gapAngle - this.gap / 2) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
-        const gapE = ((this.gapAngle + this.gap / 2) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
-        let inGap;
-        if (gapS < gapE) inGap = a >= gapS && a <= gapE;
-        else             inGap = a >= gapS || a <= gapE;
-        return !inGap;
+      case 2: { // Quadrado: perigoso nos 4 lados; safe apenas nas diagonais
+        const diag45 = Math.PI * 0.20;
+        const diags  = [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4];
+        return !diags.some(d => inZone(a, d, diag45));
+      }
+      case 3: { // Anel com gap: safe apenas no gap
+        const gS = norm(this.gapAngle - this.gapSize / 2);
+        const gE = norm(this.gapAngle + this.gapSize / 2);
+        // player safe if inside gap
+        return !inArc(a, gS, gE);
       }
     }
     return false;
   }
 }
 
-// ── Partículas ───────────────────────────────────────
-class Particle {
-  constructor(x, y, col, vx, vy, life, r) {
-    this.x = x; this.y = y;
-    this.vx = vx; this.vy = vy;
-    this.col = col;
-    this.life = life; this.maxLife = life;
-    this.r = r;
-  }
-  update(dt) {
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    this.vy += 60 * dt; // gravidade leve
-    this.life -= dt;
-  }
-  draw() {
-    const a = Math.max(0, this.life / this.maxLife);
-    ctx.save();
-    ctx.globalAlpha = a;
-    ctx.fillStyle   = this.col;
-    ctx.shadowColor = this.col;
-    ctx.shadowBlur  = 8;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r * a, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
+function norm(a) { return ((a % (Math.PI*2)) + Math.PI*2) % (Math.PI*2); }
+function inZone(a, center, half) {
+  const d = Math.abs(norm(a - center) - Math.PI);
+  return Math.abs(d - Math.PI) < half;
+}
+function inArc(a, s, e) {
+  if (s <= e) return a >= s && a <= e;
+  return a >= s || a <= e;
 }
 
-function spawnExplosion(x, y, col, n = 24) {
-  for (let i = 0; i < n; i++) {
-    const a  = Math.random() * Math.PI * 2;
-    const sp = 80 + Math.random() * 260;
-    particles.push(new Particle(x, y, col,
-      Math.cos(a) * sp, Math.sin(a) * sp,
-      0.5 + Math.random() * 0.8,
-      2 + Math.random() * 5
-    ));
-  }
-}
-
-function spawnTrail(x, y, col) {
-  particles.push(new Particle(x, y, col,
-    (Math.random()-0.5)*30, (Math.random()-0.5)*30,
-    0.12 + Math.random() * 0.10,
-    1.5 + Math.random() * 2.5
-  ));
-}
-
-// ── Estrelas de fundo ────────────────────────────────
-const STARS = Array.from({length: 80}, () => ({
-  x: Math.random(), y: Math.random(),
-  r: 0.5 + Math.random() * 1.5,
-  speed: 0.15 + Math.random() * 0.6,
-}));
-
+// ── Fundo: estrelas ───────────────────────────────────────────────
+const STARS = Array.from({length:70}, () => ({x:Math.random(),y:Math.random(),r:0.4+Math.random()*1.4,sp:0.1+Math.random()*0.5}));
+let bgT = 0;
 function drawStars(dt, col) {
-  bgStarT += dt;
+  bgT += dt;
   ctx.save();
   STARS.forEach(s => {
-    s.x -= s.speed * dt * 0.04;
-    if (s.x < 0) { s.x = 1; s.y = Math.random(); }
-    const alpha = 0.15 + 0.1 * Math.sin(bgStarT * s.speed * 2 + s.y * 10);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = col;
-    ctx.shadowColor = col; ctx.shadowBlur = 4;
-    ctx.beginPath();
-    ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
-    ctx.fill();
+    s.x -= s.sp * dt * 0.04; if (s.x < 0) { s.x=1; s.y=Math.random(); }
+    ctx.globalAlpha = (0.12 + 0.08*Math.sin(bgT*s.sp*2 + s.y*8)) * 0.8;
+    ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 3;
+    ctx.beginPath(); ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2); ctx.fill();
   });
   ctx.restore();
 }
 
-// ── Desenho do túnel (anéis) ─────────────────────────
-let tunnelOffset = 0; // offset crescente (scroll no eixo Z)
+// ── Túnel (anéis + linhas) ────────────────────────────────────────
+let tunnelZ = 0; // offset de scroll
 
 function drawTunnel(col, wallCol) {
-  // Desenha anéis do mais longe ao mais perto
-  for (let i = RING_COUNT; i >= 0; i--) {
-    const z = i * RING_GAP - (tunnelOffset % RING_GAP);
+  const nLines = 8;
+  for (let i = 20; i >= 0; i--) {
+    const z = i * RING_GAP - (tunnelZ % RING_GAP);
     if (z <= 0) continue;
     const sc = FOV / z;
-    const r  = Math.min(W, H) * 0.46 * sc;
-    if (r < 2 || r > Math.max(W, H) * 2) continue;
-
-    const alpha = Math.min(0.7, (z / ZFAR) * 1.4) * 0.55;
+    const r  = Math.min(W,H) * T_RAD_RATIO * sc;
+    if (r < 3 || r > Math.max(W,H)*2.5) continue;
+    const alpha = Math.min(0.65, (1 - z/ZFAR) * 1.2) * 0.55;
+    // anel
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = col;
-    ctx.shadowColor = col;
-    ctx.shadowBlur  = 6;
-    ctx.lineWidth   = Math.max(0.5, 1.5 * sc);
-    ctx.beginPath();
-    ctx.arc(CX, CY, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // Linhas longitudinais (eixos do túnel)
-    if (i % 2 === 0) {
-      const nLines = 6;
-      ctx.save();
-      ctx.globalAlpha = alpha * 0.45;
-      ctx.strokeStyle = col;
-      ctx.lineWidth   = 0.5;
-      for (let j = 0; j < nLines; j++) {
-        const a  = j * Math.PI * 2 / nLines;
-        const nx = CX + Math.cos(a) * r;
-        const ny = CY + Math.sin(a) * r;
-        // Conecta ao próximo anel (perspectiva)
-        const z2 = (i - 1) * RING_GAP - (tunnelOffset % RING_GAP);
-        if (z2 <= 0) continue;
-        const sc2 = FOV / z2;
-        const r2  = Math.min(W, H) * 0.46 * sc2;
-        const nx2 = CX + Math.cos(a) * r2;
-        const ny2 = CY + Math.sin(a) * r2;
-        ctx.beginPath();
-        ctx.moveTo(nx, ny);
-        ctx.lineTo(nx2, ny2);
-        ctx.stroke();
+    ctx.strokeStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 5;
+    ctx.lineWidth   = Math.max(0.5, 1.2 * sc);
+    ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI*2); ctx.stroke();
+    // Linhas longitudinais (rotacionam com túnel)
+    if (i % 2 === 0 && i > 0) {
+      const z2 = (i-1)*RING_GAP - (tunnelZ % RING_GAP);
+      if (z2 > 0) {
+        const sc2 = FOV/z2, r2 = Math.min(W,H)*T_RAD_RATIO*sc2;
+        ctx.lineWidth = 0.4; ctx.globalAlpha = alpha * 0.40;
+        for (let j = 0; j < nLines; j++) {
+          const a = j * Math.PI*2/nLines; // já rotacionado pelo ctx geral
+          ctx.beginPath();
+          ctx.moveTo(CX + Math.cos(a)*r,  CY + Math.sin(a)*r);
+          ctx.lineTo(CX + Math.cos(a)*r2, CY + Math.sin(a)*r2);
+          ctx.stroke();
+        }
       }
-      ctx.restore();
     }
+    ctx.restore();
   }
 }
 
-// ── Jogador (bola neon na borda do túnel) ────────────
-function drawPlayer(col, col2) {
-  const r  = Math.min(W, H) * 0.44; // raio da trilha do jogador
-  const px = CX + Math.cos(playerAngle) * r * PLAYER_DIST;
-  const py = CY + Math.sin(playerAngle) * r * PLAYER_DIST;
-  const pr = Math.min(W, H) * PLAYER_R_RAT;
+// ── Nave (player) ─────────────────────────────────────────────────
+// Sempre na base do túnel: posição fixa na tela
+function getPlayerScreenPos() {
+  const r = Math.min(W,H) * T_RAD_RATIO * 0.82; // um pouco dentro da borda
+  return {
+    x: CX,
+    y: CY + r,
+    r: Math.min(W,H) * 0.040
+  };
+}
 
-  // Rastro de velocidade
-  if (state === 'playing' && !playerDead) {
-    spawnTrail(px, py, col);
-  }
+function drawShip(col, col2, dt) {
+  const { x, y, r: pr } = getPlayerScreenPos();
+  enginePulse += dt * 8;
+
+  // Rastro do motor
+  spawnTrail(x, y + pr * 0.8, col2);
+  spawnTrail(x - pr*0.5, y + pr * 0.7, col);
+  spawnTrail(x + pr*0.5, y + pr * 0.7, col);
 
   ctx.save();
-  // Glow externo
-  ctx.shadowColor = col; ctx.shadowBlur = 28;
-  ctx.globalAlpha = 0.6;
-  ctx.fillStyle = col2;
-  ctx.beginPath();
-  ctx.arc(px, py, pr * 1.6, 0, Math.PI * 2);
-  ctx.fill();
-  // Núcleo
-  ctx.shadowBlur = 14;
-  ctx.globalAlpha = 1;
-  const g = ctx.createRadialGradient(px - pr*0.3, py - pr*0.3, 0, px, py, pr);
-  g.addColorStop(0, '#ffffff');
-  g.addColorStop(0.4, col);
-  g.addColorStop(1, col2);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(px, py, pr, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  ctx.translate(x, y);
+  ctx.rotate(shipTilt * 0.35); // leve inclinação ao virar
 
-  return { x: px, y: py, r: pr };
+  // ── Fuselagem principal ──
+  const g = ctx.createLinearGradient(0, -pr*1.8, 0, pr*0.8);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.3, col);
+  g.addColorStop(1, col2);
+  ctx.shadowColor = col; ctx.shadowBlur = 22;
+  ctx.fillStyle = g;
+
+  ctx.beginPath();
+  ctx.moveTo(0,        -pr*1.85);  // ponta da nave
+  ctx.lineTo(-pr*0.38, -pr*0.40);  // lateral esq (cintura)
+  ctx.lineTo(-pr*0.28,  pr*0.80);  // cauda esq
+  ctx.lineTo( 0,         pr*0.40);  // centro cauda
+  ctx.lineTo( pr*0.28,   pr*0.80);  // cauda dir
+  ctx.lineTo( pr*0.38, -pr*0.40);  // lateral dir
+  ctx.closePath();
+  ctx.fill();
+
+  // Borda neon
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.shadowBlur = 6;
+  ctx.stroke();
+
+  // ── Asas ──
+  ctx.fillStyle = col + 'cc'; ctx.shadowBlur = 14;
+  // Asa esquerda
+  ctx.beginPath();
+  ctx.moveTo(-pr*0.32, -pr*0.20);
+  ctx.lineTo(-pr*1.60,  pr*0.40);
+  ctx.lineTo(-pr*1.10,  pr*0.85);
+  ctx.lineTo(-pr*0.28,  pr*0.60);
+  ctx.closePath(); ctx.fill();
+  // Asa direita
+  ctx.beginPath();
+  ctx.moveTo( pr*0.32, -pr*0.20);
+  ctx.lineTo( pr*1.60,  pr*0.40);
+  ctx.lineTo( pr*1.10,  pr*0.85);
+  ctx.lineTo( pr*0.28,  pr*0.60);
+  ctx.closePath(); ctx.fill();
+
+  // Borda das asas
+  ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.shadowBlur = 8;
+  // ponteiras das asas
+  ctx.beginPath(); ctx.moveTo(-pr*1.60, pr*0.40); ctx.lineTo(-pr*1.10, pr*0.85); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( pr*1.60, pr*0.40); ctx.lineTo( pr*1.10, pr*0.85); ctx.stroke();
+
+  // ── Cockpit ──
+  const cg = ctx.createRadialGradient(0, -pr*0.90, 0, 0, -pr*0.90, pr*0.38);
+  cg.addColorStop(0, '#ffffff');
+  cg.addColorStop(0.5, col2 + 'cc');
+  cg.addColorStop(1, 'transparent');
+  ctx.fillStyle = cg; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(0, -pr*0.90, pr*0.22, pr*0.38, 0, 0, Math.PI*2); ctx.fill();
+
+  // ── Motores (2) ──
+  const ef = 0.7 + 0.3*Math.sin(enginePulse);
+  [-pr*0.42, pr*0.42].forEach(ex => {
+    // carcaça do motor
+    ctx.fillStyle = '#111'; ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.ellipse(ex, pr*0.75, pr*0.18, pr*0.10, 0, 0, Math.PI*2); ctx.fill();
+    // chama
+    const mg = ctx.createRadialGradient(ex, pr*0.80, 0, ex, pr*0.90, pr*0.22*ef);
+    mg.addColorStop(0, '#ffffff');
+    mg.addColorStop(0.3, col2);
+    mg.addColorStop(1, 'transparent');
+    ctx.fillStyle = mg; ctx.shadowColor = col2; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.ellipse(ex, pr*0.85, pr*0.14*ef, pr*0.22*ef, 0, 0, Math.PI*2); ctx.fill();
+  });
+
+  // ── Luz de posição (blink) ──
+  ctx.shadowColor = '#ff4444'; ctx.shadowBlur = 8;
+  ctx.fillStyle   = '#ff4444';
+  ctx.globalAlpha = 0.6 + 0.4*Math.sin(enginePulse * 0.5);
+  ctx.beginPath(); ctx.arc(-pr*1.55, pr*0.42, pr*0.07, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#44ff44';
+  ctx.beginPath(); ctx.arc( pr*1.55, pr*0.42, pr*0.07, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
 }
 
-// ── Loop de jogo ─────────────────────────────────────
-let lastTs = 0;
-let frameId = null;
+// ── Game Loop ─────────────────────────────────────────────────────
+let lastTs = 0, frameId = null;
 
 function loop(ts) {
   frameId = requestAnimationFrame(loop);
   const dt = Math.min((ts - lastTs) / 1000, 0.05);
   lastTs = ts;
 
-  const ph = PHASES[phaseIdx % PHASES.length];
-  const col  = ph.col;
-  const col2 = ph.col2;
+  const ph   = PHASES[phaseIdx % PHASES.length];
+  const col  = ph.col, col2 = ph.col2;
 
   // ── Background ──
-  ctx.fillStyle = '#000010';
+  ctx.fillStyle = '#00000e';
   ctx.fillRect(0, 0, W, H);
-
-  // Gradiente radial de fundo (cor da fase)
   const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.min(W,H)*0.55);
   bg.addColorStop(0, ph.wall + 'ff');
   bg.addColorStop(1, '#000008ff');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
   drawStars(dt, col);
 
+  // ── Game logic ──
   if (state === 'playing' && !playerDead) {
-    // ── Atualizar estado ──
     totalTime  += dt;
-    score       = Math.floor(totalTime * 12 + speed * 0.05);
+    score       = Math.floor(totalTime * 14 + speed * 0.04);
     phaseTimer -= dt;
-    speed       = BASE_SPEED + totalTime * 28;
+    speed       = BASE_SPD + totalTime * 25;
 
     if (phaseTimer <= 0) {
       phaseTimer = PHASE_DUR;
       phaseIdx++;
-      // Float text de fase
-      floatPhaseMsg = `FASE ${phaseIdx + 1} — ${PHASES[phaseIdx % PHASES.length].name}`;
-      floatPhaseTtl = 2.5;
+      addFloat(`FASE ${phaseIdx+1} — ${PHASES[phaseIdx % PHASES.length].name}`, PHASES[phaseIdx % PHASES.length].col);
     }
 
-    // Scroll do túnel
-    tunnelOffset += speed * dt;
+    tunnelZ += speed * dt;
 
-    // Mover jogador
-    const rotSpd = 2.2 + speed * 0.001; // velocidade de rotação
-    if (keyLeft)           playerAngle -= rotSpd * dt;
-    if (keyRight)          playerAngle += rotSpd * dt;
-    if (touchDeltaX !== 0) playerAngle += touchDeltaX * 0.012;
+    // Rotação do túnel baseada no input
+    const rotSpd = 1.95 + speed * 0.0008;
+    let rotInput = 0;
+    if (keyLeft)       rotInput -= rotSpd;
+    if (keyRight)      rotInput += rotSpd;
+    if (isTouching && touchDX !== 0) rotInput += touchDX * 0.018 * rotSpd;
+    tunnelAngle += rotInput * dt;
+    shipTilt    += (rotInput * 0.35 - shipTilt) * Math.min(1, dt * 6);
 
-    // Spawnar obstáculos
-    while (obstacles.length === 0 || obstacles[obstacles.length-1].z < ZFAR - RING_GAP * 3) {
+    // Spawn de obstáculos
+    while (!obstacles.length || obstacles[obstacles.length-1].z < ZFAR - RING_GAP*3) {
       const lastZ = obstacles.length ? obstacles[obstacles.length-1].z : ZFAR;
-      const gap   = RING_GAP * (2.5 + Math.random() * 2.5);
-      obstacles.push(new Obstacle(lastZ + gap));
+      obstacles.push(new Obstacle(lastZ + RING_GAP*(2.8 + Math.random()*2.2)));
     }
 
-    // Atualizar obstáculos
     obstacles.forEach(o => o.update(dt, speed));
     obstacles = obstacles.filter(o => !o.dead);
 
     // Colisão
-    const playerPos = playerAngle;
     for (const obs of obstacles) {
-      if (obs.collides(playerPos)) {
+      if (obs.collides(tunnelAngle)) {
         playerDead = true;
         deathFlash = 1.0;
-        const pr = Math.min(W, H) * 0.44;
-        const px = CX + Math.cos(playerAngle) * pr * PLAYER_DIST;
-        const py = CY + Math.sin(playerAngle) * pr * PLAYER_DIST;
-        spawnExplosion(px, py, col, 30);
-        spawnExplosion(CX, CY, col2, 16);
-        setTimeout(() => showGameOver(), 900);
+        const { x, y } = getPlayerScreenPos();
+        spawnBurst(x, y, col, 32);
+        spawnBurst(x, y, '#ffffff', 12);
+        setTimeout(showGameOver, 950);
         break;
       }
     }
 
-    // Partículas
     particles.forEach(p => p.update(dt));
     particles = particles.filter(p => p.life > 0);
-
-    // HUD
     document.getElementById('hudScore').textContent = score;
-    document.getElementById('hudScore').style.color  = col;
-    document.getElementById('hudPhase').textContent  = `FASE ${phaseIdx + 1} — ${ph.name}`;
-  } else if (state === 'dead') {
-    // Só anima partículas
+    document.getElementById('hudScore').style.color = col;
+    document.getElementById('hudPhase').textContent = `FASE ${phaseIdx+1} — ${ph.name}`;
+    touchDX = 0;
+
+  } else if (state === 'dead' || state === 'idle') {
+    tunnelZ += (state === 'idle' ? 80 : 35) * dt;
     particles.forEach(p => p.update(dt));
     particles = particles.filter(p => p.life > 0);
-    tunnelOffset += 40 * dt; // tunel continua devagar
+    if (state === 'idle') {
+      // Rotação lenta decorativa na tela inicial
+      tunnelAngle += 0.18 * dt;
+    }
   }
 
-  // ── Desenhar ──
+  // ── Render: tudo que gira com o túnel ──
+  ctx.save();
+  ctx.translate(CX, CY);
+  ctx.rotate(tunnelAngle);
+  ctx.translate(-CX, -CY);
   drawTunnel(col, ph.wall);
-
-  // Obstáculos
   obstacles.forEach(o => o.draw(col, col2));
+  ctx.restore();
 
-  // Player
-  if (!playerDead || deathFlash > 0) drawPlayer(col, col2);
+  // ── Nave (fora da rotação do túnel) ──
+  if (state === 'playing' && !playerDead) drawShip(col, col2, dt);
 
-  // Partículas por cima
-  particles.forEach(p => p.draw());
+  // ── Partículas ──
+  ctx.save(); particles.forEach(p => p.draw()); ctx.restore();
 
-  // Death flash
+  // ── Death flash ──
   if (deathFlash > 0) {
-    deathFlash -= dt * 3;
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, deathFlash) * 0.7;
-    ctx.fillStyle = '#ff0033';
-    ctx.fillRect(0, 0, W, H);
-    ctx.restore();
+    deathFlash -= dt * 3.2;
+    ctx.save(); ctx.globalAlpha = Math.max(0, deathFlash) * 0.75;
+    ctx.fillStyle = '#ff1122'; ctx.fillRect(0, 0, W, H); ctx.restore();
   }
 
-  // Float de fase
-  if (typeof floatPhaseTtl === 'number' && floatPhaseTtl > 0) {
-    floatPhaseTtl -= dt;
-    const a = Math.min(1, floatPhaseTtl) * Math.min(1, floatPhaseTtl * 2);
+  // ── Float messages ──
+  floatMsgs = floatMsgs.filter(m => m.alpha > 0);
+  floatMsgs.forEach(m => {
+    m.y += m.vy * dt; m.alpha -= dt * 0.65; m.vy *= 0.96;
     ctx.save();
-    ctx.globalAlpha = a;
-    ctx.font = `bold ${Math.round(Math.min(W,H)*0.045)}px Courier New`;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = PHASES[phaseIdx % PHASES.length].col;
-    ctx.shadowColor = PHASES[phaseIdx % PHASES.length].col;
-    ctx.shadowBlur = 20;
-    ctx.fillText(floatPhaseMsg || '', CX, CY * 0.35);
-    ctx.restore();
-  }
+    ctx.globalAlpha = Math.max(0, Math.min(1, m.alpha));
+    ctx.font = `bold ${Math.round(Math.min(W,H)*0.042)}px Courier New`;
+    ctx.textAlign = 'center'; ctx.fillStyle = m.col;
+    ctx.shadowColor = m.col; ctx.shadowBlur = 18;
+    ctx.fillText(m.txt, CX, m.y); ctx.restore();
+  });
 }
 
-let floatPhaseMsg = '', floatPhaseTtl = 0;
-
-// ── Início de jogo ───────────────────────────────────
+// ── Start / Game Over ─────────────────────────────────────────────
 function startGame() {
-  if (frameId) { cancelAnimationFrame(frameId); frameId = null; }
-  state       = 'playing';
-  score       = 0;
-  totalTime   = 0;
-  speed       = BASE_SPEED;
-  phaseIdx    = 0;
-  phaseTimer  = PHASE_DUR;
-  tunnelOffset = 0;
-  playerAngle  = 0;
-  playerDead   = false;
-  deathFlash   = 0;
-  obstacles    = [];
-  particles    = [];
-  floatPhaseTtl = 0;
-  keyLeft = keyRight = false;
-  touchDeltaX = 0;
+  if (frameId) cancelAnimationFrame(frameId);
+  state = 'playing'; score = 0; totalTime = 0;
+  speed = BASE_SPD; phaseIdx = 0; phaseTimer = PHASE_DUR;
+  tunnelAngle = 0; tunnelZ = 0;
+  playerDead = false; deathFlash = 0; shipTilt = 0;
+  obstacles = []; particles = []; floatMsgs = [];
+  keyLeft = keyRight = false; touchDX = 0;
   lastTs = 0;
-
-  hideOverlays();
+  hideOvs();
   document.getElementById('hud').style.display = 'flex';
-  document.getElementById('hudBest').textContent = bestScore > 0 ? 'RECORDE: ' + bestScore : '';
-
+  document.getElementById('hudBest').textContent = bestScore > 0 ? 'RECORDE: '+bestScore : '';
   frameId = requestAnimationFrame(loop);
 }
 
-// ── Game Over ────────────────────────────────────────
 function showGameOver() {
   state = 'dead';
-  if (score > bestScore) {
-    bestScore = score;
-    localStorage.setItem('tunnelRushBest', bestScore);
-  }
+  if (score > bestScore) { bestScore = score; localStorage.setItem('trBest', bestScore); }
   document.getElementById('hud').style.display = 'none';
   document.getElementById('goScore').textContent = score;
   document.getElementById('goBest').textContent  = 'Recorde: ' + bestScore;
-  showOverlay('ovGameOver');
+  showOv('ovGameOver');
   saveScoreCloud();
 }
 
-// ── Ranking ──────────────────────────────────────────
+// ── Ranking ───────────────────────────────────────────────────────
 async function showRanking() {
-  showOverlay('ovRanking');
-  document.getElementById('rankingList').innerHTML = '<div class="ov-sub">Carregando...</div>';
-  const { data, error } = await supa
-    .from('tr_scores')
-    .select('best_score, profiles(username)')
-    .order('best_score', { ascending: false })
-    .limit(15);
-
-  if (error || !data || data.length === 0) {
-    document.getElementById('rankingList').innerHTML = '<div class="ov-sub" style="color:rgba(255,255,255,0.3)">Nenhum score ainda.</div>';
+  showOv('ovRanking');
+  document.getElementById('rankList').innerHTML = '<div class="ov-sub">Carregando...</div>';
+  const { data, error } = await supa.from('tr_scores')
+    .select('user_id, best_score, profiles(username)')
+    .order('best_score', { ascending: false }).limit(15);
+  if (error || !data?.length) {
+    document.getElementById('rankList').innerHTML = '<div class="ov-sub" style="color:rgba(255,255,255,0.25)">Nenhum score ainda.</div>';
     return;
   }
-
-  const myId = supaUser?.id;
   let html = '<table class="rank-table">';
-  data.forEach((row, i) => {
-    const name  = row.profiles?.username || 'Anônimo';
-    const isMe  = supaUser && row.user_id === myId;
-    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '°';
-    html += `<tr class="${isMe ? 'rank-me' : ''}">
-      <td class="rank-pos">${medal}</td>
-      <td class="rank-name">${name}${isMe ? ' 👈' : ''}</td>
-      <td class="rank-score">${row.best_score}</td>
-    </tr>`;
+  data.forEach((r, i) => {
+    const name  = r.profiles?.username || 'Anônimo';
+    const isMe  = supaUser && r.user_id === supaUser.id;
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'°';
+    html += `<tr class="${isMe?'rank-me':''}"><td class="rank-pos">${medal}</td><td class="rank-name">${name}${isMe?' 👈':''}</td><td class="rank-sc">${r.best_score}</td></tr>`;
   });
-  html += '</table>';
-  document.getElementById('rankingList').innerHTML = html;
+  document.getElementById('rankList').innerHTML = html + '</table>';
 }
 
-// ── Auth ─────────────────────────────────────────────
-function switchTab(tab) {
-  const isLogin = tab === 'login';
-  document.getElementById('formLogin').style.display  = isLogin ? 'flex' : 'none';
-  document.getElementById('formSignup').style.display = isLogin ? 'none'  : 'flex';
-  document.getElementById('tabLogin').style.background  = isLogin ? 'rgba(255,68,170,0.18)' : 'transparent';
-  document.getElementById('tabSignup').style.background = isLogin ? 'transparent' : 'rgba(0,255,136,0.14)';
-  document.getElementById('tabLogin').style.color  = isLogin ? '#fff' : 'rgba(255,255,255,0.4)';
-  document.getElementById('tabSignup').style.color = isLogin ? 'rgba(255,255,255,0.4)' : '#fff';
-  document.getElementById('loginMsg').textContent  = '';
-  document.getElementById('signupMsg').textContent = '';
+// ── Auth ──────────────────────────────────────────────────────────
+function switchTab(t) {
+  const l = t==='login';
+  document.getElementById('formLogin').style.display  = l?'flex':'none';
+  document.getElementById('formSignup').style.display = l?'none':'flex';
+  document.getElementById('tabLogin').style.background  = l?'rgba(255,68,170,0.18)':'transparent';
+  document.getElementById('tabSignup').style.background = l?'transparent':'rgba(0,255,136,0.14)';
+  document.getElementById('tabLogin').style.color  = l?'#fff':'rgba(255,255,255,0.38)';
+  document.getElementById('tabSignup').style.color = l?'rgba(255,255,255,0.38)':'#fff';
+  document.getElementById('loginMsg').textContent = document.getElementById('signupMsg').textContent = '';
 }
-
 async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPass').value;
   document.getElementById('loginMsg').textContent = 'Entrando...';
   const { data, error } = await supa.auth.signInWithPassword({ email, password: pass });
-  if (error) { document.getElementById('loginMsg').textContent = '✗ ' + error.message; return; }
-  supaUser = data.user;
-  await loadProfile();
-  updateUserUI();
-  showOverlay('ovStart');
+  if (error) { document.getElementById('loginMsg').textContent = '✗ '+error.message; return; }
+  supaUser = data.user; await loadProfile(); updateUserUI(); showOv('ovStart');
 }
-
 async function doSignup() {
   const username = document.getElementById('signupUser').value.trim();
   const email    = document.getElementById('signupEmail').value.trim();
   const pass     = document.getElementById('signupPass').value;
-  if (!username) { document.getElementById('signupMsg').textContent = '✗ Informe um nome de usuário'; return; }
-  document.getElementById('signupMsg').textContent = 'Criando conta...';
+  if (!username) { document.getElementById('signupMsg').textContent = '✗ Informe um nome'; return; }
+  document.getElementById('signupMsg').textContent = 'Criando...';
   const { data, error } = await supa.auth.signUp({ email, password: pass });
-  if (error) { document.getElementById('signupMsg').textContent = '✗ ' + error.message; return; }
+  if (error) { document.getElementById('signupMsg').textContent = '✗ '+error.message; return; }
   supaUser = data.user;
-  // Salvar perfil
-  await supa.from('profiles').upsert({ user_id: supaUser.id, username }, { onConflict: 'user_id' });
-  supaProfile = { username };
-  updateUserUI();
-  document.getElementById('signupMsg').textContent = '✅ Conta criada! Bem-vindo, ' + username;
-  setTimeout(() => showOverlay('ovStart'), 1500);
+  await supa.from('profiles').upsert({ user_id: supaUser.id, username }, { onConflict:'user_id' });
+  supaProfile = { username }; updateUserUI();
+  document.getElementById('signupMsg').textContent = '✅ Bem-vindo, '+username+'!';
+  setTimeout(() => showOv('ovStart'), 1400);
 }
-
 async function doSignOut() {
-  await supa.auth.signOut();
-  supaUser = null; supaProfile = null;
-  updateUserUI();
-  showOverlay('ovStart');
+  await supa.auth.signOut(); supaUser = null; supaProfile = null; updateUserUI(); showOv('ovStart');
 }
-
 async function loadProfile() {
   if (!supaUser) return;
   const { data } = await supa.from('profiles').select('username').eq('user_id', supaUser.id).single();
   supaProfile = data || null;
 }
-
 function updateUserUI() {
-  const logado = !!supaUser && !!supaProfile;
-  const badge  = document.getElementById('userBadge');
-  const authBtn = document.querySelector('#ovStart .ov-btn-sm[onclick="showOverlay(\'ovAuth\')"]');
-  if (logado) {
-    badge.style.display = 'flex';
-    document.getElementById('badgeUser').textContent = supaProfile.username;
-    if (authBtn) authBtn.style.display = 'none';
-  } else {
-    badge.style.display = 'none';
-    if (authBtn) authBtn.style.display = '';
-  }
+  const ok = !!supaUser && !!supaProfile;
+  document.getElementById('userBadge').style.display = ok ? 'block' : 'none';
+  if (ok) document.getElementById('badgeUser').textContent = supaProfile.username;
 }
-
-// ── Salvar score na nuvem ────────────────────────────
 async function saveScoreCloud() {
   document.getElementById('goSaveMsg').textContent = '';
   if (!supaUser) return;
   try {
-    const { data: existing } = await supa.from('tr_scores').select('best_score').eq('user_id', supaUser.id).single();
-    const prev = existing?.best_score ?? 0;
-    if (score > prev) {
-      await supa.from('tr_scores').upsert({ user_id: supaUser.id, best_score: score }, { onConflict: 'user_id' });
-      document.getElementById('goSaveMsg').textContent = '🏆 Novo recorde salvo na nuvem!';
+    const { data: ex } = await supa.from('tr_scores').select('best_score').eq('user_id', supaUser.id).single();
+    if (score > (ex?.best_score ?? 0)) {
+      await supa.from('tr_scores').upsert({ user_id: supaUser.id, best_score: score }, { onConflict:'user_id' });
+      document.getElementById('goSaveMsg').textContent = '🏆 Novo recorde salvo!';
     }
-  } catch (_) {}
+  } catch(_) {}
 }
 
-// ── Boot ─────────────────────────────────────────────
-bestScore = parseInt(localStorage.getItem('tunnelRushBest') || '0');
+// ── Boot ──────────────────────────────────────────────────────────
+bestScore = parseInt(localStorage.getItem('trBest') || '0');
 if (bestScore > 0) {
-  document.getElementById('ovStartBestRow').style.display = 'block';
-  document.getElementById('ovStartBest').textContent = '🏆 Recorde: ' + bestScore;
+  document.getElementById('ovBestRow').style.display = 'block';
+  document.getElementById('ovBestTxt').textContent   = '🏆 Recorde: ' + bestScore;
 }
-
-// Auto-login
 (async () => {
   const { data: { session } } = await supa.auth.getSession();
-  if (session) {
-    supaUser = session.user;
-    await loadProfile();
-    updateUserUI();
-  }
+  if (session) { supaUser = session.user; await loadProfile(); updateUserUI(); }
 })();
 
-// Iniciar loop de fundo (tela de start)
-state = 'start';
-phaseIdx = 0; phaseTimer = PHASE_DUR; totalTime = 0; speed = BASE_SPEED;
-tunnelOffset = 0; playerAngle = 0; playerDead = false;
-obstacles = []; particles = [];
+// Loop decorativo na tela inicial
+state = 'idle'; phaseIdx = 0; phaseTimer = PHASE_DUR; totalTime = 0;
+speed = BASE_SPD; tunnelZ = 0; tunnelAngle = 0;
+obstacles = []; particles = []; floatMsgs = [];
+// Pré-spawn de alguns obstáculos decorativos
+for (let i = 1; i <= 6; i++) obstacles.push(new Obstacle(RING_GAP * i * 2.5 + 200));
 lastTs = 0;
 frameId = requestAnimationFrame(loop);
 </script>
