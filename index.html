@@ -374,82 +374,61 @@ function drawStars(dt, col) {
 let tunnelZ = 0; // offset de scroll
 
 function drawTunnel(col, wallCol, ringCol) {
-  const N = 6;
-  // Índice world-space para xadrez estável (não pisca)
-  const baseRing = Math.floor(tunnelZ / RING_GAP);
+  const N    = 6;
+  const zOff = tunnelZ % RING_GAP;
 
-  // Sombreamento direcional por face (simula luz vindo do topo)
-  const faceShade = Array.from({length: N}, (_, j) => {
-    const angle = (j + 0.5) * Math.PI * 2 / N - Math.PI / 2;
-    return 0.55 + 0.45 * Math.cos(angle); // 0.10 (baixo) a 1.0 (cima)
-  });
+  // Coleta todos os anéis visíveis (longe → perto)
+  const rings = [];
+  for (let i = 28; i >= 0; i--) {
+    const z = i * RING_GAP - zOff;
+    if (z <= 1) continue;
+    const sc = FOV / z;
+    const r  = Math.min(W, H) * T_RAD_RATIO * sc;
+    if (r < 2 || r > Math.max(W, H) * 5) continue;
+    const depth = Math.min(1, (1 - z / ZFAR) * 2.2);
+    if (depth < 0.01) continue;
+    rings.push({ r, depth, sc });
+  }
 
-  for (let i = 26; i >= 1; i--) {
-    const z0 = i       * RING_GAP - (tunnelZ % RING_GAP);
-    const z1 = (i - 1) * RING_GAP - (tunnelZ % RING_GAP);
-    if (z0 <= 1 || z1 <= 1) continue;
+  ctx.save();
+  ctx.strokeStyle = '#ffffff';
+  ctx.shadowBlur  = 0;
 
-    const sc0 = FOV / z0, r0 = Math.min(W, H) * T_RAD_RATIO * sc0;
-    const sc1 = FOV / z1, r1 = Math.min(W, H) * T_RAD_RATIO * sc1;
-    if (r0 < 2 || r1 > Math.max(W, H) * 6) continue;
-
-    // Depth fog: perto = brilhante, longe = escuro
-    const fog = Math.pow(Math.min(1, (1 - z0 / ZFAR) * 1.6), 1.4);
-    if (fog <= 0.01) continue;
-
-    const worldBand = baseRing + i; // índice estável no mundo
-
-    for (let j = 0; j < N; j++) {
-      const a1 = j       * Math.PI * 2 / N;
-      const a2 = (j + 1) * Math.PI * 2 / N;
-
-      // Xadrez: alterna pelo índice de mundo (não pisca)
-      const isWhite = (worldBand + j) % 2 === 0;
-      // Sombreamento 3D por face + fog
-      const shade = faceShade[j] * fog;
-
-      ctx.save();
-      ctx.globalAlpha = isWhite ? shade * 0.82 : shade * 0.06;
-      ctx.fillStyle   = isWhite ? '#ffffff' : '#000008';
-      ctx.beginPath();
-      ctx.moveTo(CX + Math.cos(a1) * r1, CY + Math.sin(a1) * r1);
-      ctx.lineTo(CX + Math.cos(a2) * r1, CY + Math.sin(a2) * r1);
-      ctx.lineTo(CX + Math.cos(a2) * r0, CY + Math.sin(a2) * r0);
-      ctx.lineTo(CX + Math.cos(a1) * r0, CY + Math.sin(a1) * r0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+  // 1. Linhas longitudinais: cada canto do hexágono do mais longe ao mais perto
+  //    São elas que criam a perspectiva de corredor 3D
+  ctx.lineWidth = 1.4;
+  for (let j = 0; j < N; j++) {
+    const a = j * Math.PI * 2 / N;
+    ctx.beginPath();
+    let first = true;
+    for (const { r } of rings) {
+      const x = CX + Math.cos(a) * r;
+      const y = CY + Math.sin(a) * r;
+      if (first) { ctx.moveTo(x, y); first = false; }
+      else ctx.lineTo(x, y);
     }
+    ctx.globalAlpha = 0.70;
+    ctx.stroke();
+  }
 
-    // Arestas do hexágono (linhas brancas que definem a estrutura 3D)
+  // 2. Anéis de secção (hexágonos) — espaçados pela perspectiva
+  for (const { r, depth, sc } of rings) {
     ctx.save();
-    ctx.globalAlpha = fog * 0.38;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth   = Math.max(0.4, 0.9 * sc0);
+    ctx.globalAlpha = depth * 0.65;
+    ctx.lineWidth   = Math.max(0.5, 1.1 * sc);
     ctx.beginPath();
     for (let j = 0; j <= N; j++) {
       const a = j * Math.PI * 2 / N;
       j === 0
-        ? ctx.moveTo(CX + Math.cos(a) * r0, CY + Math.sin(a) * r0)
-        : ctx.lineTo(CX + Math.cos(a) * r0, CY + Math.sin(a) * r0);
+        ? ctx.moveTo(CX + Math.cos(a) * r, CY + Math.sin(a) * r)
+        : ctx.lineTo(CX + Math.cos(a) * r, CY + Math.sin(a) * r);
     }
     ctx.closePath();
     ctx.stroke();
-
-    // Arestas longitudinais (cantos do tubo — criam o visual 3D)
-    if (i <= 22) {
-      ctx.globalAlpha = fog * 0.22;
-      ctx.lineWidth   = Math.max(0.3, 0.6 * sc0);
-      for (let j = 0; j < N; j++) {
-        const a = j * Math.PI * 2 / N;
-        ctx.beginPath();
-        ctx.moveTo(CX + Math.cos(a) * r0, CY + Math.sin(a) * r0);
-        ctx.lineTo(CX + Math.cos(a) * r1, CY + Math.sin(a) * r1);
-        ctx.stroke();
-      }
-    }
     ctx.restore();
   }
+
+  ctx.restore();
 }
 
 // ── Nave (player) ─────────────────────────────────────────────────
@@ -467,83 +446,19 @@ function drawShip(col, col2, dt) {
   const { x, y, r: pr } = getPlayerScreenPos();
   enginePulse += dt * 8;
 
-  // Bico apontando para cima — quase nada entra no túnel
-  const tipH = pr * 0.10;  // bico minúsculo
-  const hw   = pr * 0.24;  // meia-largura na base
-
-  const tipX = x, tipY = y - tipH; // ponta do bico
-  const baseY = y + pr * 0.18;     // base fica além da borda (some no "casco")
-
-  // Pequeno rastro nos escapamentos
-  if (Math.random() < 0.6) spawnTrail(x - hw * 0.6, baseY, col);
-  if (Math.random() < 0.6) spawnTrail(x + hw * 0.6, baseY, col);
-
+  // Indicador mínimo: pequeno triângulo branco na borda do túnel
+  const sz = pr * 0.30;
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(shipTilt * 0.12);
-
-  // Gradiente metálico lateral
-  const grad = ctx.createLinearGradient(-hw, 0, hw, 0);
-  grad.addColorStop(0,   '#555566');
-  grad.addColorStop(0.45,'#ddddee');
-  grad.addColorStop(0.55,'#ddddee');
-  grad.addColorStop(1,   '#555566');
-
+  ctx.rotate(shipTilt * 0.10);
   ctx.shadowColor = col;
-  ctx.shadowBlur  = 22;
-  ctx.fillStyle   = grad;
-  ctx.globalAlpha = 1;
-
-  // Só o bico — base extende para baixo (além da borda da tela)
+  ctx.shadowBlur  = 14;
+  ctx.fillStyle   = '#ffffff';
+  ctx.globalAlpha = 0.85;
   ctx.beginPath();
-  ctx.moveTo(0,    -tipH);        // ponta do bico
-  ctx.lineTo(-hw,   pr * 0.18);  // base esq (some no "casco" abaixo)
-  ctx.lineTo( hw,   pr * 0.18);  // base dir
-  ctx.closePath();
-  ctx.fill();
-
-  // Friso colorido da fase
-  ctx.fillStyle   = col;
-  ctx.globalAlpha = 0.28 + 0.12 * Math.sin(enginePulse);
-  ctx.shadowBlur  = 30;
-  ctx.beginPath();
-  ctx.moveTo(0,   -tipH);
-  ctx.lineTo(-hw,  pr * 0.18);
-  ctx.lineTo( hw,  pr * 0.18);
-  ctx.closePath();
-  ctx.fill();
-
-  // Nervura central (detalhe metálico)
-  ctx.globalAlpha = 0.55;
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth   = 0.8;
-  ctx.shadowBlur  = 3;
-  ctx.beginPath();
-  ctx.moveTo(0, -tipH);
-  ctx.lineTo(0,  pr * 0.05);
-  ctx.stroke();
-
-  ctx.restore();
-
-  // Painel lateral do cockpit — sugere que a tela É a cápsula da nave
-  const panelAlpha = 0.18;
-  ctx.save();
-  ctx.globalAlpha = panelAlpha;
-  ctx.fillStyle   = '#aaaacc';
-  // Painel esq
-  ctx.beginPath();
-  ctx.moveTo(0,       H);
-  ctx.lineTo(0,       y + pr * 0.05);
-  ctx.lineTo(x - hw,  y + pr * 0.18);
-  ctx.lineTo(x - hw * 3.5, H);
-  ctx.closePath();
-  ctx.fill();
-  // Painel dir
-  ctx.beginPath();
-  ctx.moveTo(W,       H);
-  ctx.lineTo(W,       y + pr * 0.05);
-  ctx.lineTo(x + hw,  y + pr * 0.18);
-  ctx.lineTo(x + hw * 3.5, H);
+  ctx.moveTo( 0,        -sz);
+  ctx.lineTo(-sz * 0.55, sz * 0.45);
+  ctx.lineTo( sz * 0.55, sz * 0.45);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -560,17 +475,9 @@ function loop(ts) {
   const ph   = PHASES[phaseIdx % PHASES.length];
   const col  = ph.col, col2 = ph.col2;
 
-  // ── Background ──
-  const isClassic = ph.classic === true;
-  ctx.fillStyle = isClassic ? '#000000' : '#00000e';
+  // ── Background — preto puro sempre (wireframe)
+  ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, W, H);
-  if (!isClassic) {
-    const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.min(W,H)*0.55);
-    bg.addColorStop(0, ph.wall + 'ff');
-    bg.addColorStop(1, '#000008ff');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    drawStars(dt, col);
-  }
 
   // ── Game logic ──
   if (state === 'playing' && !playerDead) {
