@@ -333,7 +333,7 @@ class Obstacle {
 
     const sc      = FOV / this.z;
     const obsR    = Math.min(W, H) * T_RAD_RATIO * sc;
-    const playerR = Math.min(W, H) * T_RAD_RATIO * 0.78; // ligeiramente dentro da borda
+    const playerR = Math.min(W, H) * T_RAD_RATIO * 0.94; // na borda da parede
     const thick   = obsR * 0.13 + Math.min(W, H) * 0.018; // margem menor = mais justo
 
     if (Math.abs(obsR - playerR) > thick) return false;
@@ -455,7 +455,7 @@ function drawTunnel(col, wallCol, ringCol) {
 // ── Nave (player) ─────────────────────────────────────────────────
 // Sempre na base do túnel: posição fixa na tela
 function getPlayerScreenPos() {
-  const r = Math.min(W,H) * T_RAD_RATIO * 0.82; // um pouco dentro da borda
+  const r = Math.min(W,H) * T_RAD_RATIO * 0.97; // na borda da parede do túnel
   return {
     x: CX,
     y: CY + r,
@@ -467,9 +467,9 @@ function drawShip(col, col2, dt) {
   const { x, y, r: pr } = getPlayerScreenPos();
   enginePulse += dt * 8;
 
-  // Bico apontando para cima — base fica abaixo da borda do túnel (fora de vista)
-  const tipH = pr * 0.38;  // quanto o bico entra no túnel
-  const hw   = pr * 0.28;  // meia-largura na base
+  // Bico apontando para cima — quase nada entra no túnel
+  const tipH = pr * 0.10;  // bico minúsculo
+  const hw   = pr * 0.24;  // meia-largura na base
 
   const tipX = x, tipY = y - tipH; // ponta do bico
   const baseY = y + pr * 0.18;     // base fica além da borda (some no "casco")
