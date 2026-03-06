@@ -151,12 +151,13 @@ resize();
 
 // ── Fases ────────────────────────────────────────────────────────
 const PHASES = [
-  { name:'NEXUS',   col:'#00ffff', col2:'#0055ff', wall:'#001833' },
-  { name:'INFERNO', col:'#ff3300', col2:'#ff9900', wall:'#1a0500' },
-  { name:'ACID',    col:'#aaff00', col2:'#00ff44', wall:'#061a00' },
-  { name:'VORTEX',  col:'#cc00ff', col2:'#ff00aa', wall:'#120020' },
-  { name:'SOLAR',   col:'#ffd700', col2:'#ff6600', wall:'#1a1000' },
-  { name:'FREEZE',  col:'#88eeff', col2:'#aaaaff', wall:'#000d1a' },
+  { name:'CLÁSSICO', col:'#ff2200', col2:'#ff6644', wall:'#000000', ringCol:'#ffffff', classic:true },
+  { name:'NEXUS',    col:'#00ffff', col2:'#0055ff', wall:'#001833', ringCol:'#00ffff' },
+  { name:'INFERNO',  col:'#ff3300', col2:'#ff9900', wall:'#1a0500', ringCol:'#ff5500' },
+  { name:'ACID',     col:'#aaff00', col2:'#00ff44', wall:'#061a00', ringCol:'#aaff00' },
+  { name:'VORTEX',   col:'#cc00ff', col2:'#ff00aa', wall:'#120020', ringCol:'#dd44ff' },
+  { name:'SOLAR',    col:'#ffd700', col2:'#ff6600', wall:'#1a1000', ringCol:'#ffd700' },
+  { name:'FREEZE',   col:'#88eeff', col2:'#aaaaff', wall:'#000d1a', ringCol:'#88eeff' },
 ];
 
 // ── Constantes ───────────────────────────────────────────────────
@@ -164,7 +165,7 @@ const FOV      = 380;
 const ZNEAR    = 55;
 const ZFAR     = 1600;
 const RING_GAP = 100;
-const BASE_SPD = 300;
+const BASE_SPD = 380;
 const PHASE_DUR = 30;
 // Raio do túnel na tela em relação ao menor lado
 const T_RAD_RATIO = 0.43;
@@ -251,10 +252,11 @@ function addFloat(txt, col) {
 class Obstacle {
   constructor(z) {
     this.z   = z;
-    const TYPES = [0, 1, 3];
+    const TYPES = [0, 1, 3, 4, 4]; // type 4 (pás) mais frequente
     this.type = TYPES[Math.floor(Math.random() * TYPES.length)];
     this.rot  = Math.random() * Math.PI * 2;
-    this.rotSpd = (Math.random() - 0.5) * 1.6;
+    this.rotSpd = (Math.random() - 0.5) * 2.2;
+    this.nBlades = Math.random() < 0.5 ? 3 : 4; // 3 ou 4 pás
     // gap para tipos com buraco
     this.gapAngle = Math.random() * Math.PI * 2;
     this.gapSize  = Math.PI * (0.30 + Math.random() * 0.22);  // largura do gap
@@ -392,6 +394,32 @@ class Obstacle {
         ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, Math.PI*2); ctx.stroke();
         break;
       }
+      case 4: { // Pás rotativas — obstáculo icônico do original
+        const n = this.nBlades;
+        const sectorAngle = (Math.PI * 2) / n;
+        const bladeAngle  = sectorAngle * 0.60; // pá cobre 60% do setor
+        const rInner = r * 0.10;
+        const rOuter = r * 0.92;
+        for (let i = 0; i < n; i++) {
+          const startA = i * sectorAngle;
+          const endA   = startA + bladeAngle;
+          ctx.beginPath();
+          ctx.arc(0, 0, rInner, startA, endA);
+          ctx.arc(0, 0, rOuter, endA, startA, true);
+          ctx.closePath();
+          ctx.fill();
+          // Borda brilhante col2
+          ctx.globalAlpha = alpha * 0.70;
+          ctx.strokeStyle = col2; ctx.shadowColor = col2; ctx.lineWidth = lw * 0.55;
+          ctx.stroke();
+          ctx.globalAlpha = alpha;
+          ctx.strokeStyle = col; ctx.shadowColor = col;
+        }
+        // Núcleo central
+        ctx.globalAlpha = alpha * 0.80;
+        ctx.beginPath(); ctx.arc(0, 0, rInner * 1.8, 0, Math.PI*2); ctx.fill();
+        break;
+      }
     }
     ctx.restore();
   }
@@ -435,6 +463,17 @@ class Obstacle {
         const gE = norm(this.gapAngle + this.gapSize / 2);
         return !inArc(a, gS, gE);
       }
+      case 4: { // Pás: colidir se estiver dentro de uma pá
+        const n = this.nBlades;
+        const sectorAngle = (Math.PI * 2) / n;
+        const bladeAngle  = sectorAngle * 0.60;
+        for (let i = 0; i < n; i++) {
+          const startA = norm(i * sectorAngle);
+          const endA   = norm(startA + bladeAngle);
+          if (inArc(a, startA, endA)) return true;
+        }
+        return false;
+      }
     }
     return false;
   }
@@ -468,7 +507,8 @@ function drawStars(dt, col) {
 // ── Túnel (anéis + linhas) ────────────────────────────────────────
 let tunnelZ = 0; // offset de scroll
 
-function drawTunnel(col, wallCol) {
+function drawTunnel(col, wallCol, ringCol) {
+  const rc = ringCol || col;
   const nLines = 8;
   for (let i = 20; i >= 0; i--) {
     const z = i * RING_GAP - (tunnelZ % RING_GAP);
@@ -480,7 +520,7 @@ function drawTunnel(col, wallCol) {
     // anel
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 5;
+    ctx.strokeStyle = rc; ctx.shadowColor = rc; ctx.shadowBlur = 5;
     ctx.lineWidth   = Math.max(0.5, 1.2 * sc);
     ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI*2); ctx.stroke();
     // Linhas longitudinais (rotacionam com túnel)
@@ -489,8 +529,9 @@ function drawTunnel(col, wallCol) {
       if (z2 > 0) {
         const sc2 = FOV/z2, r2 = Math.min(W,H)*T_RAD_RATIO*sc2;
         ctx.lineWidth = 0.4; ctx.globalAlpha = alpha * 0.40;
+        ctx.strokeStyle = rc; ctx.shadowColor = rc;
         for (let j = 0; j < nLines; j++) {
-          const a = j * Math.PI*2/nLines; // já rotacionado pelo ctx geral
+          const a = j * Math.PI*2/nLines;
           ctx.beginPath();
           ctx.moveTo(CX + Math.cos(a)*r,  CY + Math.sin(a)*r);
           ctx.lineTo(CX + Math.cos(a)*r2, CY + Math.sin(a)*r2);
@@ -617,21 +658,23 @@ function loop(ts) {
   const col  = ph.col, col2 = ph.col2;
 
   // ── Background ──
-  ctx.fillStyle = '#00000e';
+  const isClassic = ph.classic === true;
+  ctx.fillStyle = isClassic ? '#000000' : '#00000e';
   ctx.fillRect(0, 0, W, H);
-  const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.min(W,H)*0.55);
-  bg.addColorStop(0, ph.wall + 'ff');
-  bg.addColorStop(1, '#000008ff');
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-
-  drawStars(dt, col);
+  if (!isClassic) {
+    const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.min(W,H)*0.55);
+    bg.addColorStop(0, ph.wall + 'ff');
+    bg.addColorStop(1, '#000008ff');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    drawStars(dt, col);
+  }
 
   // ── Game logic ──
   if (state === 'playing' && !playerDead) {
     totalTime  += dt;
-    score       = Math.floor(totalTime * 14 + speed * 0.04);
+    score       = Math.floor(totalTime * 16 + speed * 0.04);
     phaseTimer -= dt;
-    speed       = BASE_SPD + totalTime * 25;
+    speed       = BASE_SPD + totalTime * 38;
 
     if (phaseTimer <= 0) {
       phaseTimer = PHASE_DUR;
@@ -694,7 +737,7 @@ function loop(ts) {
   ctx.translate(CX, CY);
   ctx.rotate(tunnelAngle);
   ctx.translate(-CX, -CY);
-  drawTunnel(col, ph.wall);
+  drawTunnel(col, ph.wall, ph.ringCol);
   obstacles.forEach(o => o.draw(col, col2));
   ctx.restore();
 
