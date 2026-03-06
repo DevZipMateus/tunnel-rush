@@ -396,38 +396,43 @@ class Obstacle {
     ctx.restore();
   }
 
-  // Colisão: verifica se o jogador (sempre na base do túnel = PI/2 - tunnelAngle)
-  // está na zona de perigo do obstáculo
+  // Colisão: nave explode APENAS quando fisicamente toca o obstáculo na tela
   collides(tAngle) {
-    if (this.z > ZNEAR * 3.5 || this.z < 0) return false;
-    const prox = 1 - Math.max(0, (this.z - ZNEAR) / (ZNEAR * 1.8));
-    if (prox < 0.28) return false;
+    if (this.z <= 1) return false;
 
-    // Ângulo do jogador no referencial do obstáculo
+    // Raio do anel do obstáculo na tela
+    const sc       = FOV / this.z;
+    const obsR     = Math.min(W, H) * T_RAD_RATIO * sc * (this.type === 3 ? 0.82 : 1.0);
+    // Raio fixo da nave na tela
+    const playerR  = Math.min(W, H) * T_RAD_RATIO * 0.82;
+    // Metade do hitbox da nave (apertado para ser justo)
+    const shipHalf = Math.min(W, H) * 0.030;
+    // Espessura visual do obstáculo
+    const halfThick = this.type === 0
+      ? obsR * 0.09                  // metade da altura das barras
+      : Math.max(2, 5 * sc) * 0.7;  // metade da linha do anel
+
+    // Só colide se o anel do obstáculo estiver sobrepondo a posição da nave na tela
+    if (Math.abs(obsR - playerR) > halfThick + shipHalf) return false;
+
+    // Ângulo do jogador no referencial local do obstáculo
     const a = norm(PLAYER_ANGLE_DEFAULT - tAngle - this.rot);
 
     switch(this.type) {
-      case 0: { // Barras horizontais: gap no centro vertical (90° e 270°)
-        // Barras ficam nas bordas esq/dir (0° e 180°); gap é a faixa central (90°/270°)
+      case 0: { // Barras horizontais: gap no centro (90°/270°), perigo em 0°/180°
         const safeZone = Math.PI * 0.22;
         return !( inZone(a, Math.PI/2, safeZone) || inZone(a, 3*Math.PI/2, safeZone) );
       }
-      case 1: { // Triângulos: 4 espinhos em 0, 90, 180, 270°; safe nos entre-meios
+      case 1: { // Espinhos em 0°, 90°, 180°, 270°
         const spikeW = Math.PI * 0.12;
         for (let i = 0; i < 4; i++) {
           if (inZone(a, i * Math.PI / 2, spikeW)) return true;
         }
         return false;
       }
-      case 2: { // Quadrado: perigoso nos 4 lados; safe apenas nas diagonais
-        const diag45 = Math.PI * 0.20;
-        const diags  = [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4];
-        return !diags.some(d => inZone(a, d, diag45));
-      }
-      case 3: { // Anel com gap: safe apenas no gap
+      case 3: { // Anel com gap: seguro apenas dentro do gap
         const gS = norm(this.gapAngle - this.gapSize / 2);
         const gE = norm(this.gapAngle + this.gapSize / 2);
-        // player safe if inside gap
         return !inArc(a, gS, gE);
       }
     }
