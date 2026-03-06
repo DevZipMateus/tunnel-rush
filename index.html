@@ -642,7 +642,7 @@ function loop(ts) {
     tunnelZ += speed * dt;
 
     // Rotação do túnel baseada no input
-    const rotSpd = 1.95 + speed * 0.0008;
+    const rotSpd = 2.8 + speed * 0.0010;
     let rotInput = 0;
     if (keyLeft)       rotInput -= rotSpd;
     if (keyRight)      rotInput += rotSpd;
@@ -653,7 +653,7 @@ function loop(ts) {
     // Spawn de obstáculos
     while (!obstacles.length || obstacles[obstacles.length-1].z < ZFAR - RING_GAP*3) {
       const lastZ = obstacles.length ? obstacles[obstacles.length-1].z : ZFAR;
-      obstacles.push(new Obstacle(lastZ + RING_GAP*(5.0 + Math.random()*3.0)));
+      obstacles.push(new Obstacle(lastZ + RING_GAP*(8.0 + Math.random()*4.0)));
     }
 
     obstacles.forEach(o => o.update(dt, speed));
