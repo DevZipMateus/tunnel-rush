@@ -248,270 +248,121 @@ function addFloat(txt, col) {
 }
 
 // ── Obstáculos ───────────────────────────────────────────────────
-// Tipos: 0=barra dupla com gap, 1=triângulos espinhos, 2=quadrado 3D, 3=anel com gap
+// Obstáculos como painéis por face do hexágono — igual ao Tunnel Rush original
 class Obstacle {
   constructor(z) {
     this.z    = z;
-    const TYPES = [0, 1, 3, 4, 4];
-    this.type = TYPES[Math.floor(Math.random() * TYPES.length)];
+    this.dead = false;
 
-    // Rotação alinhada a uma face do hexágono (múltiplos de 60°)
-    const FACE = Math.PI / 3; // 60°
-    this.faceIndex  = Math.floor(Math.random() * 6);
-    this.rot        = this.faceIndex * FACE;
+    // Quais das 6 faces hexagonais estão BLOQUEADAS
+    this.faces = this.generatePattern();
+
+    // Rotação alinhada a face do hexágono (múltiplos de 60°)
+    this.rot       = Math.floor(Math.random() * 6) * (Math.PI / 3);
+    this.targetRot = this.rot;
 
     // 25% dos obstáculos se movem para face adjacente
-    if (Math.random() < 0.25) {
-      this.snapping   = true;
-      this.targetFace = this.faceIndex;
-      this.faceTimer  = 0.7 + Math.random() * 1.3; // espera antes de mover
-    } else {
-      this.snapping = false;
-    }
-
-    this.nBlades  = Math.random() < 0.5 ? 3 : 4;
-    this.gapAngle = 0; // gap sempre em 0° local (alinha com a face)
-    this.gapSize  = Math.PI * (0.30 + Math.random() * 0.22);
-    this.dead     = false;
+    this.snapping  = Math.random() < 0.25;
+    this.faceTimer = 0.7 + Math.random() * 1.3;
   }
+
+  generatePattern() {
+    // Padrões: quais faces são bloqueadas (true = bloqueada)
+    const patterns = [
+      [1,1,1,1,1,0], // 5 bloqueadas, 1 gap
+      [1,1,1,1,0,0], // 4 bloqueadas, 2 gaps adjacentes
+      [1,0,1,1,0,1], // 4 bloqueadas, 2 gaps alternados
+      [1,1,0,1,1,0], // 4 bloqueadas, gaps opostos
+      [1,0,1,0,1,0], // 3 bloqueadas, alternando (mais fácil)
+      [1,1,0,0,1,1], // 4 bloqueadas, 2 gaps no meio
+    ];
+    const base   = patterns[Math.floor(Math.random() * patterns.length)];
+    const offset = Math.floor(Math.random() * 6);
+    return Array.from({length: 6}, (_, i) => !!base[(i + offset) % 6]);
+  }
+
   update(dt, spd) {
     this.z -= spd * dt;
     if (this.z < -ZNEAR * 3) this.dead = true;
+    if (!this.snapping) return;
 
-    if (!this.snapping) return; // estático — rot não muda
-
-    const FACE        = Math.PI / 3;
-    const targetAngle = this.targetFace * FACE;
-    const diff        = norm(targetAngle - this.rot);
-    const shortDiff   = diff > Math.PI ? diff - Math.PI * 2 : diff;
+    const diff      = norm(this.targetRot - this.rot);
+    const shortDiff = diff > Math.PI ? diff - Math.PI * 2 : diff;
 
     if (Math.abs(shortDiff) < 0.03) {
-      // Chegou na face — trava e conta o timer
-      this.rot       = targetAngle;
-      this.faceIndex = this.targetFace;
+      this.rot = this.targetRot;
       this.faceTimer -= dt;
       if (this.faceTimer <= 0) {
-        // Salta para face adjacente (esquerda ou direita)
-        const dir       = Math.random() < 0.5 ? 1 : -1;
-        this.targetFace = ((this.targetFace + dir) + 6) % 6;
-        this.faceTimer  = 0.6 + Math.random() * 1.2;
+        const dir      = Math.random() < 0.5 ? 1 : -1;
+        this.targetRot = norm(this.targetRot + dir * (Math.PI / 3));
+        this.faceTimer = 0.6 + Math.random() * 1.2;
       }
     } else {
-      // Desliza suavemente até a face alvo
       this.rot += shortDiff * Math.min(1, dt * 5.0);
     }
   }
+
   draw(col, col2) {
     if (this.z <= 1) return;
     const sc = FOV / this.z;
     const r  = Math.min(W, H) * T_RAD_RATIO * sc;
-    if (r < 3 || r > Math.max(W,H) * 3) return;
+    if (r < 3 || r > Math.max(W, H) * 3) return;
+
     const alpha = Math.min(1, (this.z - ZNEAR) / (ZNEAR * 1.8)) * 0.96;
     if (alpha <= 0) return;
-    const lw = Math.max(2, 5 * sc);
+
+    const N      = 6;
+    const rOuter = r * 0.97;
+    const rInner = r * 0.08; // buraco central pequeno
 
     ctx.save();
     ctx.translate(CX, CY);
     ctx.rotate(this.rot);
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = col; ctx.fillStyle = col;
-    ctx.shadowColor = col; ctx.shadowBlur = 18 + 10 * sc;
-    ctx.lineWidth   = lw;
+    ctx.fillStyle   = col;
+    ctx.shadowColor = col;
+    ctx.shadowBlur  = 14 + 8 * sc;
 
-    switch(this.type) {
-      case 0: { // Barras duplas horizontais com gap no centro
-        const barH = r * 0.18;
-        const gap  = r * 0.30; // espaço no meio
-        // Barra da esquerda
-        ctx.beginPath();
-        ctx.rect(-r, -barH/2, r - gap, barH);
-        ctx.fill();
-        // Barra da direita
-        ctx.beginPath();
-        ctx.rect(gap, -barH/2, r - gap, barH);
-        ctx.fill();
-        // Efeito 3D: face superior mais clara
-        ctx.globalAlpha = alpha * 0.45;
-        ctx.fillStyle = col2;
-        ctx.fillRect(-r, -barH/2 - barH*0.35, r-gap, barH*0.35);
-        ctx.fillRect(gap, -barH/2 - barH*0.35, r-gap, barH*0.35);
-        // Bordas neon
-        ctx.globalAlpha = alpha * 0.8;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-r, -barH/2, r-gap, 2);
-        ctx.fillRect(gap, -barH/2, r-gap, 2);
-        break;
-      }
-      case 1: { // Triângulos espinhos (4 lados, como original)
-        const nSpikes = 4;
-        const spikeLen = r * 0.55;
-        const spikeW   = r * 0.14;
-        ctx.lineWidth = 1.5;
-        for (let i = 0; i < nSpikes; i++) {
-          ctx.save();
-          ctx.rotate(i * Math.PI * 2 / nSpikes);
-          // Triângulo apontando para o centro
-          const tip  = spikeLen;
-          const base = r;
-          ctx.beginPath();
-          ctx.moveTo(-spikeW, base);
-          ctx.lineTo(spikeW, base);
-          ctx.lineTo(0, base - tip);
-          ctx.closePath();
-          ctx.fill();
-          // Brilho na borda
-          ctx.strokeStyle = col2; ctx.shadowColor = col2;
-          ctx.stroke();
-          // Face interna mais clara
-          ctx.globalAlpha = alpha * 0.50;
-          ctx.fillStyle = col2;
-          ctx.beginPath();
-          ctx.moveTo(0, base);
-          ctx.lineTo(spikeW * 0.4, base);
-          ctx.lineTo(0, base - tip * 0.6);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        }
-        break;
-      }
-      case 2: { // Quadrado 3D no centro com gap nos cantos
-        const sq = r * 0.52;
-        const depth = sq * 0.28;
-        // Frente do cubo
-        ctx.beginPath();
-        ctx.rect(-sq/2, -sq/2, sq, sq);
-        ctx.fill();
-        ctx.strokeStyle = col2; ctx.lineWidth = lw * 0.6; ctx.stroke();
-        // Face superior (3D)
-        ctx.globalAlpha = alpha * 0.55;
-        ctx.fillStyle = col2;
-        ctx.beginPath();
-        ctx.moveTo(-sq/2, -sq/2);
-        ctx.lineTo(-sq/2 + depth, -sq/2 - depth);
-        ctx.lineTo(sq/2  + depth, -sq/2 - depth);
-        ctx.lineTo(sq/2,  -sq/2);
-        ctx.closePath(); ctx.fill();
-        // Face direita (3D)
-        ctx.beginPath();
-        ctx.moveTo(sq/2, -sq/2);
-        ctx.lineTo(sq/2 + depth, -sq/2 - depth);
-        ctx.lineTo(sq/2 + depth,  sq/2 - depth);
-        ctx.lineTo(sq/2,  sq/2);
-        ctx.closePath(); ctx.fill();
-        // Borda frontal brilhante
-        ctx.globalAlpha = alpha;
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-        ctx.strokeRect(-sq/2, -sq/2, sq, sq);
-        break;
-      }
-      case 3: { // Anel sólido com gap — estilo Tunnel Rush original
-        const gS = this.gapAngle - this.gapSize / 2;
-        const gE = this.gapAngle + this.gapSize / 2;
-        const rOuter = r * 0.92;
-        const rInner = r * 0.68;
-        // Anel preenchido (donut) com o gap cortado
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(0, 0, rOuter, gE, gS + Math.PI * 2, false);
-        ctx.arc(0, 0, rInner, gS + Math.PI * 2, gE, true);
-        ctx.closePath();
-        ctx.fill();
-        // Borda col2 nos lados do gap
-        ctx.globalAlpha = alpha * 0.80;
-        ctx.strokeStyle = col2; ctx.shadowColor = col2; ctx.lineWidth = lw * 0.6;
-        [gS, gE].forEach(a => {
-          const ex1 = Math.cos(a) * rInner, ey1 = Math.sin(a) * rInner;
-          const ex2 = Math.cos(a) * rOuter, ey2 = Math.sin(a) * rOuter;
-          ctx.beginPath(); ctx.moveTo(ex1, ey1); ctx.lineTo(ex2, ey2); ctx.stroke();
-        });
-        ctx.restore();
-        break;
-      }
-      case 4: { // Pás rotativas — obstáculo icônico do original
-        const n = this.nBlades;
-        const sectorAngle = (Math.PI * 2) / n;
-        const bladeAngle  = sectorAngle * 0.60; // pá cobre 60% do setor
-        const rInner = r * 0.10;
-        const rOuter = r * 0.92;
-        for (let i = 0; i < n; i++) {
-          const startA = i * sectorAngle;
-          const endA   = startA + bladeAngle;
-          ctx.beginPath();
-          ctx.arc(0, 0, rInner, startA, endA);
-          ctx.arc(0, 0, rOuter, endA, startA, true);
-          ctx.closePath();
-          ctx.fill();
-          // Borda brilhante col2
-          ctx.globalAlpha = alpha * 0.70;
-          ctx.strokeStyle = col2; ctx.shadowColor = col2; ctx.lineWidth = lw * 0.55;
-          ctx.stroke();
-          ctx.globalAlpha = alpha;
-          ctx.strokeStyle = col; ctx.shadowColor = col;
-        }
-        // Núcleo central
-        ctx.globalAlpha = alpha * 0.80;
-        ctx.beginPath(); ctx.arc(0, 0, rInner * 1.8, 0, Math.PI*2); ctx.fill();
-        break;
-      }
+    for (let j = 0; j < N; j++) {
+      if (!this.faces[j]) continue; // face aberta — não desenha
+
+      const a1 = j       * Math.PI * 2 / N;
+      const a2 = (j + 1) * Math.PI * 2 / N;
+
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a1) * rInner, Math.sin(a1) * rInner);
+      ctx.lineTo(Math.cos(a1) * rOuter, Math.sin(a1) * rOuter);
+      ctx.lineTo(Math.cos(a2) * rOuter, Math.sin(a2) * rOuter);
+      ctx.lineTo(Math.cos(a2) * rInner, Math.sin(a2) * rInner);
+      ctx.closePath();
+      ctx.fill();
+
+      // Borda neon na aresta da face
+      ctx.globalAlpha = alpha * 0.75;
+      ctx.strokeStyle = col2;
+      ctx.shadowColor = col2;
+      ctx.lineWidth   = Math.max(1.5, 4 * sc);
+      ctx.stroke();
+      ctx.globalAlpha = alpha;
     }
+
     ctx.restore();
   }
 
-  // Colisão: nave explode APENAS quando fisicamente toca o obstáculo na tela
   collides(tAngle) {
     if (this.z <= 1) return false;
 
-    // Raio do anel do obstáculo na tela
-    const sc       = FOV / this.z;
-    const obsR     = Math.min(W, H) * T_RAD_RATIO * sc * (this.type === 3 ? 0.80 : 1.0);
-    // Raio fixo da nave na tela
-    const playerR  = Math.min(W, H) * T_RAD_RATIO * 0.82;
-    // Metade do hitbox da nave (apertado para ser justo)
-    const shipHalf = Math.min(W, H) * 0.030;
-    // Espessura visual do obstáculo
-    const halfThick = this.type === 0
-      ? obsR * 0.09                  // metade da altura das barras
-      : this.type === 3
-        ? obsR * 0.17                // anel agora é mais espesso (donut)
-        : Math.max(2, 5 * sc) * 0.7;
+    const sc      = FOV / this.z;
+    const obsR    = Math.min(W, H) * T_RAD_RATIO * sc;
+    const playerR = Math.min(W, H) * T_RAD_RATIO * 0.82;
+    const thick   = obsR * 0.20 + Math.min(W, H) * 0.028;
 
-    // Só colide se o anel do obstáculo estiver sobrepondo a posição da nave na tela
-    if (Math.abs(obsR - playerR) > halfThick + shipHalf) return false;
+    if (Math.abs(obsR - playerR) > thick) return false;
 
-    // Ângulo do jogador no referencial local do obstáculo
-    const a = norm(PLAYER_ANGLE_DEFAULT - tAngle - this.rot);
-
-    switch(this.type) {
-      case 0: { // Barras horizontais: gap no centro (90°/270°), perigo em 0°/180°
-        const safeZone = Math.PI * 0.22;
-        return !( inZone(a, Math.PI/2, safeZone) || inZone(a, 3*Math.PI/2, safeZone) );
-      }
-      case 1: { // Espinhos em 0°, 90°, 180°, 270°
-        const spikeW = Math.PI * 0.12;
-        for (let i = 0; i < 4; i++) {
-          if (inZone(a, i * Math.PI / 2, spikeW)) return true;
-        }
-        return false;
-      }
-      case 3: { // Anel com gap: seguro apenas dentro do gap
-        const gS = norm(this.gapAngle - this.gapSize / 2);
-        const gE = norm(this.gapAngle + this.gapSize / 2);
-        return !inArc(a, gS, gE);
-      }
-      case 4: { // Pás: colidir se estiver dentro de uma pá
-        const n = this.nBlades;
-        const sectorAngle = (Math.PI * 2) / n;
-        const bladeAngle  = sectorAngle * 0.60;
-        for (let i = 0; i < n; i++) {
-          const startA = norm(i * sectorAngle);
-          const endA   = norm(startA + bladeAngle);
-          if (inArc(a, startA, endA)) return true;
-        }
-        return false;
-      }
-    }
-    return false;
+    // Ângulo do jogador no espaço local do obstáculo
+    const a       = norm(PLAYER_ANGLE_DEFAULT - tAngle - this.rot);
+    const faceIdx = Math.floor(a / (Math.PI * 2 / 6)) % 6;
+    return this.faces[faceIdx]; // true = face bloqueada = colisão
   }
 }
 
