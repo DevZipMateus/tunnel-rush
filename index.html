@@ -140,11 +140,13 @@
 const canvas = document.getElementById('canvas');
 const ctx    = canvas.getContext('2d');
 
-let W, H, CX, CY;
+let W, H, CX, CY, VPY;
 function resize() {
   W = canvas.width  = window.innerWidth;
   H = canvas.height = window.innerHeight;
   CX = W / 2; CY = H / 2;
+  // Ponto de fuga acima do centro — câmera no piso do tubo
+  VPY = H * 0.38;
 }
 window.addEventListener('resize', resize);
 resize();
@@ -296,7 +298,7 @@ class Obstacle {
     const rInner = r * 0.50; // painéis só até metade — centro sempre visível
 
     ctx.save();
-    ctx.translate(CX, CY);
+    ctx.translate(CX, VPY);
     ctx.rotate(this.rot);
     ctx.globalAlpha = alpha;
     ctx.fillStyle   = col;
@@ -378,51 +380,76 @@ function drawTunnel(col, wallCol, ringCol) {
   const N    = 6;
   const zOff = tunnelZ % TGAP;
 
-  // Coleta anéis visíveis (longe → perto), espaçamento TGAP = mais denso
+  // Coleta anéis — ponto de fuga em VPY (câmera no piso)
   const rings = [];
-  for (let i = 50; i >= 0; i--) {
+  for (let i = 55; i >= 0; i--) {
     const z = i * TGAP - zOff;
     if (z <= 1) continue;
     const sc = FOV / z;
     const r  = Math.min(W, H) * T_RAD_RATIO * sc;
-    if (r < 1 || r > Math.max(W, H) * 7) continue;
+    if (r < 1 || r > Math.max(W, H) * 8) continue;
     const depth = Math.min(1, (1 - z / ZFAR) * 2.5);
-    if (depth < 0.008) continue;
-    rings.push({ r, depth, sc, z });
+    if (depth < 0.006) continue;
+    rings.push({ r, depth, sc });
   }
 
   ctx.save();
   ctx.strokeStyle = '#ffffff';
   ctx.shadowBlur  = 0;
 
-  // 1. Linhas longitudinais nos cantos do hexágono (far → near)
-  //    Criam o efeito de corredor convergindo ao ponto de fuga
+  // 1. Preenchimento sutil das faces (piso mais brilhante, paredes e teto mais sutis)
+  for (let k = 0; k < rings.length - 1; k++) {
+    const r0 = rings[k].r;          // anel longe (menor)
+    const r1 = rings[k + 1].r;      // anel perto (maior)
+    const fade = (rings[k].depth + rings[k + 1].depth) * 0.5;
+    for (let j = 0; j < N; j++) {
+      const a1 = j       * Math.PI * 2 / N;
+      const a2 = (j + 1) * Math.PI * 2 / N;
+      // j=1 (60°→120°) = piso (baixo), j=4 (240°→300°) = teto (cima)
+      const isFloor   = j === 1;
+      const isCeiling = j === 4;
+      const fill = isFloor ? 0.11 : isCeiling ? 0.06 : 0.03;
+      ctx.save();
+      ctx.globalAlpha = fade * fill;
+      ctx.fillStyle   = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(CX + Math.cos(a1) * r1, VPY + Math.sin(a1) * r1);
+      ctx.lineTo(CX + Math.cos(a2) * r1, VPY + Math.sin(a2) * r1);
+      ctx.lineTo(CX + Math.cos(a2) * r0, VPY + Math.sin(a2) * r0);
+      ctx.lineTo(CX + Math.cos(a1) * r0, VPY + Math.sin(a1) * r0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // 2. Linhas longitudinais — cantos do corredor convergindo ao ponto de fuga
+  ctx.globalAlpha = 0.85;
+  ctx.lineWidth   = 1.8;
   for (let j = 0; j < N; j++) {
     const a = j * Math.PI * 2 / N;
     ctx.beginPath();
     let first = true;
     for (const { r } of rings) {
       const x = CX + Math.cos(a) * r;
-      const y = CY + Math.sin(a) * r;
+      const y = VPY + Math.sin(a) * r;
       if (first) { ctx.moveTo(x, y); first = false; }
       else        ctx.lineTo(x, y);
     }
-    ctx.globalAlpha = 0.80;
-    ctx.lineWidth   = 1.6;
     ctx.stroke();
   }
 
-  // 2. Anéis de secção — cada anel com fade baseado na profundidade
+  // 3. Anéis de secção com fade de profundidade
   for (const { r, depth, sc } of rings) {
     ctx.save();
-    ctx.globalAlpha = depth * 0.72;
+    ctx.globalAlpha = depth * 0.75;
     ctx.lineWidth   = Math.max(0.4, 1.0 * sc);
     ctx.beginPath();
     for (let j = 0; j <= N; j++) {
       const a = j * Math.PI * 2 / N;
       j === 0
-        ? ctx.moveTo(CX + Math.cos(a) * r, CY + Math.sin(a) * r)
-        : ctx.lineTo(CX + Math.cos(a) * r, CY + Math.sin(a) * r);
+        ? ctx.moveTo(CX + Math.cos(a) * r, VPY + Math.sin(a) * r)
+        : ctx.lineTo(CX + Math.cos(a) * r, VPY + Math.sin(a) * r);
     }
     ctx.closePath();
     ctx.stroke();
@@ -435,10 +462,10 @@ function drawTunnel(col, wallCol, ringCol) {
 // ── Nave (player) ─────────────────────────────────────────────────
 // Sempre na base do túnel: posição fixa na tela
 function getPlayerScreenPos() {
-  const r = Math.min(W,H) * T_RAD_RATIO * 0.97; // na borda da parede do túnel
+  const r = Math.min(W,H) * T_RAD_RATIO * 0.97;
   return {
     x: CX,
-    y: CY + r,
+    y: VPY + r, // VPY = ponto de fuga no piso
     r: Math.min(W,H) * 0.040
   };
 }
@@ -541,11 +568,11 @@ function loop(ts) {
     }
   }
 
-  // ── Render: tudo que gira com o túnel ──
+  // ── Render: gira ao redor do ponto de fuga (VPY = câmera no piso) ──
   ctx.save();
-  ctx.translate(CX, CY);
+  ctx.translate(CX, VPY);
   ctx.rotate(tunnelAngle);
-  ctx.translate(-CX, -CY);
+  ctx.translate(-CX, -VPY);
   drawTunnel(col, ph.wall, ph.ringCol);
   obstacles.forEach(o => o.draw(col, col2));
   ctx.restore();
