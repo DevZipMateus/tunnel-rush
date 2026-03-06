@@ -258,12 +258,7 @@ class Obstacle {
     this.faces = this.generatePattern();
 
     // Rotação alinhada a face do hexágono (múltiplos de 60°)
-    this.rot       = Math.floor(Math.random() * 6) * (Math.PI / 3);
-    this.targetRot = this.rot;
-
-    // 25% dos obstáculos se movem para face adjacente
-    this.snapping  = Math.random() < 0.25;
-    this.faceTimer = 0.7 + Math.random() * 1.3;
+    this.rot = Math.floor(Math.random() * 6) * (Math.PI / 3);
   }
 
   generatePattern() {
@@ -284,22 +279,6 @@ class Obstacle {
   update(dt, spd) {
     this.z -= spd * dt;
     if (this.z < -ZNEAR * 3) this.dead = true;
-    if (!this.snapping) return;
-
-    const diff      = norm(this.targetRot - this.rot);
-    const shortDiff = diff > Math.PI ? diff - Math.PI * 2 : diff;
-
-    if (Math.abs(shortDiff) < 0.03) {
-      this.rot = this.targetRot;
-      this.faceTimer -= dt;
-      if (this.faceTimer <= 0) {
-        const dir      = Math.random() < 0.5 ? 1 : -1;
-        this.targetRot = norm(this.targetRot + dir * (Math.PI / 3));
-        this.faceTimer = 0.6 + Math.random() * 1.2;
-      }
-    } else {
-      this.rot += shortDiff * Math.min(1, dt * 5.0);
-    }
   }
 
   draw(col, col2) {
@@ -313,7 +292,7 @@ class Obstacle {
 
     const N      = 6;
     const rOuter = r * 0.97;
-    const rInner = r * 0.08; // buraco central pequeno
+    const rInner = r * 0.50; // painéis só até metade — centro sempre visível
 
     ctx.save();
     ctx.translate(CX, CY);
