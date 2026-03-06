@@ -374,30 +374,43 @@ function drawStars(dt, col) {
 let tunnelZ = 0; // offset de scroll
 
 function drawTunnel(col, wallCol, ringCol) {
-  const rc = ringCol || col;
-  const N  = 6; // hexagonal — igual ao Tunnel Rush original
+  const N = 6;
+  // Índice world-space para xadrez estável (não pisca)
+  const baseRing = Math.floor(tunnelZ / RING_GAP);
 
-  // Painéis sólidos: far → near (painter's algorithm)
-  for (let i = 24; i >= 1; i--) {
-    const z0 = i       * RING_GAP - (tunnelZ % RING_GAP); // anel distante
-    const z1 = (i - 1) * RING_GAP - (tunnelZ % RING_GAP); // anel próximo
+  // Sombreamento direcional por face (simula luz vindo do topo)
+  const faceShade = Array.from({length: N}, (_, j) => {
+    const angle = (j + 0.5) * Math.PI * 2 / N - Math.PI / 2;
+    return 0.55 + 0.45 * Math.cos(angle); // 0.10 (baixo) a 1.0 (cima)
+  });
+
+  for (let i = 26; i >= 1; i--) {
+    const z0 = i       * RING_GAP - (tunnelZ % RING_GAP);
+    const z1 = (i - 1) * RING_GAP - (tunnelZ % RING_GAP);
     if (z0 <= 1 || z1 <= 1) continue;
 
     const sc0 = FOV / z0, r0 = Math.min(W, H) * T_RAD_RATIO * sc0;
     const sc1 = FOV / z1, r1 = Math.min(W, H) * T_RAD_RATIO * sc1;
     if (r0 < 2 || r1 > Math.max(W, H) * 6) continue;
 
-    const fade = Math.min(1, (1 - z0 / ZFAR) * 1.8);
-    if (fade <= 0) continue;
+    // Depth fog: perto = brilhante, longe = escuro
+    const fog = Math.pow(Math.min(1, (1 - z0 / ZFAR) * 1.6), 1.4);
+    if (fog <= 0.01) continue;
 
-    // Painéis trapezoidais — padrão xadrez (preto e branco alternados)
+    const worldBand = baseRing + i; // índice estável no mundo
+
     for (let j = 0; j < N; j++) {
       const a1 = j       * Math.PI * 2 / N;
       const a2 = (j + 1) * Math.PI * 2 / N;
-      const isWhite = (i + j) % 2 === 0;
+
+      // Xadrez: alterna pelo índice de mundo (não pisca)
+      const isWhite = (worldBand + j) % 2 === 0;
+      // Sombreamento 3D por face + fog
+      const shade = faceShade[j] * fog;
+
       ctx.save();
-      ctx.globalAlpha = fade * (isWhite ? 0.55 : 0.18);
-      ctx.fillStyle   = isWhite ? '#ffffff' : '#000000';
+      ctx.globalAlpha = isWhite ? shade * 0.82 : shade * 0.06;
+      ctx.fillStyle   = isWhite ? '#ffffff' : '#000008';
       ctx.beginPath();
       ctx.moveTo(CX + Math.cos(a1) * r1, CY + Math.sin(a1) * r1);
       ctx.lineTo(CX + Math.cos(a2) * r1, CY + Math.sin(a2) * r1);
@@ -408,13 +421,11 @@ function drawTunnel(col, wallCol, ringCol) {
       ctx.restore();
     }
 
-    // Borda do anel (aresta do hexágono)
+    // Arestas do hexágono (linhas brancas que definem a estrutura 3D)
     ctx.save();
-    ctx.globalAlpha = fade * 0.45;
+    ctx.globalAlpha = fog * 0.38;
     ctx.strokeStyle = '#ffffff';
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur  = 0;
-    ctx.lineWidth   = Math.max(0.5, 1.2 * sc0);
+    ctx.lineWidth   = Math.max(0.4, 0.9 * sc0);
     ctx.beginPath();
     for (let j = 0; j <= N; j++) {
       const a = j * Math.PI * 2 / N;
@@ -424,6 +435,19 @@ function drawTunnel(col, wallCol, ringCol) {
     }
     ctx.closePath();
     ctx.stroke();
+
+    // Arestas longitudinais (cantos do tubo — criam o visual 3D)
+    if (i <= 22) {
+      ctx.globalAlpha = fog * 0.22;
+      ctx.lineWidth   = Math.max(0.3, 0.6 * sc0);
+      for (let j = 0; j < N; j++) {
+        const a = j * Math.PI * 2 / N;
+        ctx.beginPath();
+        ctx.moveTo(CX + Math.cos(a) * r0, CY + Math.sin(a) * r0);
+        ctx.lineTo(CX + Math.cos(a) * r1, CY + Math.sin(a) * r1);
+        ctx.stroke();
+      }
+    }
     ctx.restore();
   }
 }
