@@ -145,8 +145,8 @@ function resize() {
   W = canvas.width  = window.innerWidth;
   H = canvas.height = window.innerHeight;
   CX = W / 2; CY = H / 2;
-  // Ponto de fuga acima do centro — câmera no piso do tubo
-  VPY = H * 0.38;
+  // Ponto de fuga no centro da tela — câmera first-person dentro do tubo
+  VPY = H * 0.50;
 }
 window.addEventListener('resize', resize);
 resize();
@@ -377,10 +377,11 @@ function drawStars(dt, col) {
 let tunnelZ = 0; // offset de scroll
 
 function drawTunnel(col, wallCol, ringCol) {
-  const N    = 6;
-  const zOff = tunnelZ % TGAP;
+  const N        = 6;
+  const zOff     = tunnelZ % TGAP;
+  const baseBand = Math.floor(tunnelZ / TGAP);
 
-  // Coleta anéis — ponto de fuga em VPY (câmera no piso)
+  // Coleta anéis do mais distante ao mais próximo (painter's algorithm)
   const rings = [];
   for (let i = 55; i >= 0; i--) {
     const z = i * TGAP - zOff;
@@ -390,41 +391,38 @@ function drawTunnel(col, wallCol, ringCol) {
     if (r < 1 || r > Math.max(W, H) * 8) continue;
     const depth = Math.min(1, (1 - z / ZFAR) * 2.5);
     if (depth < 0.006) continue;
-    rings.push({ r, depth, sc });
+    rings.push({ r, depth, sc, band: baseBand + i });
   }
 
   ctx.save();
-  ctx.strokeStyle = '#ffffff';
-  ctx.shadowBlur  = 0;
 
-  // 1. Preenchimento sutil das faces (piso mais brilhante, paredes e teto mais sutis)
+  // 1. Preenchimento xadrez — alterna por face × anel (world-space estável)
   for (let k = 0; k < rings.length - 1; k++) {
-    const r0 = rings[k].r;          // anel longe (menor)
-    const r1 = rings[k + 1].r;      // anel perto (maior)
-    const fade = (rings[k].depth + rings[k + 1].depth) * 0.5;
+    const rFar  = rings[k].r;       // anel longe (menor)
+    const rNear = rings[k + 1].r;   // anel perto (maior)
+    const band  = rings[k].band;
+    const fade  = (rings[k].depth + rings[k + 1].depth) * 0.5;
     for (let j = 0; j < N; j++) {
-      const a1 = j       * Math.PI * 2 / N;
-      const a2 = (j + 1) * Math.PI * 2 / N;
-      // j=1 (60°→120°) = piso (baixo), j=4 (240°→300°) = teto (cima)
-      const isFloor   = j === 1;
-      const isCeiling = j === 4;
-      const fill = isFloor ? 0.11 : isCeiling ? 0.06 : 0.03;
-      ctx.save();
-      ctx.globalAlpha = fade * fill;
-      ctx.fillStyle   = '#ffffff';
+      const a1      = j       * Math.PI * 2 / N;
+      const a2      = (j + 1) * Math.PI * 2 / N;
+      const isLight = (j + band) % 2 === 0;
+      ctx.globalAlpha = fade * (isLight ? 0.32 : 0.05);
+      ctx.fillStyle   = isLight ? ringCol : '#000000';
       ctx.beginPath();
-      ctx.moveTo(CX + Math.cos(a1) * r1, VPY + Math.sin(a1) * r1);
-      ctx.lineTo(CX + Math.cos(a2) * r1, VPY + Math.sin(a2) * r1);
-      ctx.lineTo(CX + Math.cos(a2) * r0, VPY + Math.sin(a2) * r0);
-      ctx.lineTo(CX + Math.cos(a1) * r0, VPY + Math.sin(a1) * r0);
+      ctx.moveTo(CX + Math.cos(a1) * rNear, VPY + Math.sin(a1) * rNear);
+      ctx.lineTo(CX + Math.cos(a2) * rNear, VPY + Math.sin(a2) * rNear);
+      ctx.lineTo(CX + Math.cos(a2) * rFar,  VPY + Math.sin(a2) * rFar);
+      ctx.lineTo(CX + Math.cos(a1) * rFar,  VPY + Math.sin(a1) * rFar);
       ctx.closePath();
       ctx.fill();
-      ctx.restore();
     }
   }
 
-  // 2. Linhas longitudinais — cantos do corredor convergindo ao ponto de fuga
-  ctx.globalAlpha = 0.85;
+  // 2. Linhas longitudinais — cantos convergindo ao ponto de fuga
+  ctx.globalAlpha = 0.88;
+  ctx.strokeStyle = ringCol;
+  ctx.shadowColor = ringCol;
+  ctx.shadowBlur  = 4;
   ctx.lineWidth   = 1.8;
   for (let j = 0; j < N; j++) {
     const a = j * Math.PI * 2 / N;
@@ -439,11 +437,13 @@ function drawTunnel(col, wallCol, ringCol) {
     ctx.stroke();
   }
 
+  ctx.shadowBlur = 0;
+
   // 3. Anéis de secção com fade de profundidade
+  ctx.strokeStyle = ringCol;
   for (const { r, depth, sc } of rings) {
-    ctx.save();
-    ctx.globalAlpha = depth * 0.75;
-    ctx.lineWidth   = Math.max(0.4, 1.0 * sc);
+    ctx.globalAlpha = depth * 0.72;
+    ctx.lineWidth   = Math.max(0.4, 1.1 * sc);
     ctx.beginPath();
     for (let j = 0; j <= N; j++) {
       const a = j * Math.PI * 2 / N;
@@ -453,7 +453,6 @@ function drawTunnel(col, wallCol, ringCol) {
     }
     ctx.closePath();
     ctx.stroke();
-    ctx.restore();
   }
 
   ctx.restore();
@@ -577,8 +576,7 @@ function loop(ts) {
   obstacles.forEach(o => o.draw(col, col2));
   ctx.restore();
 
-  // ── Nave (fora da rotação do túnel) ──
-  if (state === 'playing' && !playerDead) drawShip(col, col2, dt);
+  // ── Nave removida — câmera first-person, sem indicador visível ──
 
   // ── Partículas ──
   ctx.save(); particles.forEach(p => p.draw()); ctx.restore();
