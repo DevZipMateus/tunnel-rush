@@ -251,7 +251,8 @@ function addFloat(txt, col) {
 class Obstacle {
   constructor(z) {
     this.z   = z;
-    this.type = Math.floor(Math.random() * 4);
+    const TYPES = [0, 1, 3];
+    this.type = TYPES[Math.floor(Math.random() * TYPES.length)];
     this.rot  = Math.random() * Math.PI * 2;
     this.rotSpd = (Math.random() - 0.5) * 1.6;
     // gap para tipos com buraco
@@ -406,13 +407,13 @@ class Obstacle {
     const a = norm(PLAYER_ANGLE_DEFAULT - tAngle - this.rot);
 
     switch(this.type) {
-      case 0: { // Barras: perigoso exceto nas zonas do gap (topo/baixo do anel)
-        // Gap fica no topo e na base (0° e 180°)
+      case 0: { // Barras horizontais: gap no centro vertical (90° e 270°)
+        // Barras ficam nas bordas esq/dir (0° e 180°); gap é a faixa central (90°/270°)
         const safeZone = Math.PI * 0.22;
-        return !( inZone(a, 0, safeZone) || inZone(a, Math.PI, safeZone) );
+        return !( inZone(a, Math.PI/2, safeZone) || inZone(a, 3*Math.PI/2, safeZone) );
       }
       case 1: { // Triângulos: 4 espinhos em 0, 90, 180, 270°; safe nos entre-meios
-        const spikeW = Math.PI * 0.23;
+        const spikeW = Math.PI * 0.12;
         for (let i = 0; i < 4; i++) {
           if (inZone(a, i * Math.PI / 2, spikeW)) return true;
         }
@@ -647,7 +648,7 @@ function loop(ts) {
     // Spawn de obstáculos
     while (!obstacles.length || obstacles[obstacles.length-1].z < ZFAR - RING_GAP*3) {
       const lastZ = obstacles.length ? obstacles[obstacles.length-1].z : ZFAR;
-      obstacles.push(new Obstacle(lastZ + RING_GAP*(2.8 + Math.random()*2.2)));
+      obstacles.push(new Obstacle(lastZ + RING_GAP*(5.0 + Math.random()*3.0)));
     }
 
     obstacles.forEach(o => o.update(dt, speed));
@@ -839,7 +840,7 @@ state = 'idle'; phaseIdx = 0; phaseTimer = PHASE_DUR; totalTime = 0;
 speed = BASE_SPD; tunnelZ = 0; tunnelAngle = 0;
 obstacles = []; particles = []; floatMsgs = [];
 // Pré-spawn de alguns obstáculos decorativos
-for (let i = 1; i <= 6; i++) obstacles.push(new Obstacle(RING_GAP * i * 2.5 + 200));
+for (let i = 1; i <= 5; i++) obstacles.push(new Obstacle(RING_GAP * i * 5.5 + 300));
 lastTs = 0;
 frameId = requestAnimationFrame(loop);
 </script>
