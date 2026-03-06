@@ -333,8 +333,8 @@ class Obstacle {
 
     const sc      = FOV / this.z;
     const obsR    = Math.min(W, H) * T_RAD_RATIO * sc;
-    const playerR = Math.min(W, H) * T_RAD_RATIO * 0.82;
-    const thick   = obsR * 0.20 + Math.min(W, H) * 0.028;
+    const playerR = Math.min(W, H) * T_RAD_RATIO * 0.78; // ligeiramente dentro da borda
+    const thick   = obsR * 0.13 + Math.min(W, H) * 0.018; // margem menor = mais justo
 
     if (Math.abs(obsR - playerR) > thick) return false;
 
@@ -467,39 +467,85 @@ function drawShip(col, col2, dt) {
   const { x, y, r: pr } = getPlayerScreenPos();
   enginePulse += dt * 8;
 
-  // Rastro sutil
-  spawnTrail(x, y + pr * 0.5, col2);
-  if (Math.random() < 0.4) spawnTrail(x + (Math.random() - .5) * pr * .6, y + pr * 0.4, col);
+  // Bico apontando para cima — base fica abaixo da borda do túnel (fora de vista)
+  const tipH = pr * 0.38;  // quanto o bico entra no túnel
+  const hw   = pr * 0.28;  // meia-largura na base
 
-  const sz = pr * 0.72;
+  const tipX = x, tipY = y - tipH; // ponta do bico
+  const baseY = y + pr * 0.18;     // base fica além da borda (some no "casco")
+
+  // Pequeno rastro nos escapamentos
+  if (Math.random() < 0.6) spawnTrail(x - hw * 0.6, baseY, col);
+  if (Math.random() < 0.6) spawnTrail(x + hw * 0.6, baseY, col);
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(shipTilt * 0.22);
+  ctx.rotate(shipTilt * 0.12);
 
-  // Triângulo branco — igual ao Tunnel Rush original
+  // Gradiente metálico lateral
+  const grad = ctx.createLinearGradient(-hw, 0, hw, 0);
+  grad.addColorStop(0,   '#555566');
+  grad.addColorStop(0.45,'#ddddee');
+  grad.addColorStop(0.55,'#ddddee');
+  grad.addColorStop(1,   '#555566');
+
   ctx.shadowColor = col;
-  ctx.shadowBlur  = 24;
-  ctx.fillStyle   = '#ffffff';
-  ctx.globalAlpha = 0.95;
+  ctx.shadowBlur  = 22;
+  ctx.fillStyle   = grad;
+  ctx.globalAlpha = 1;
+
+  // Só o bico — base extende para baixo (além da borda da tela)
   ctx.beginPath();
-  ctx.moveTo(0,        -sz);        // ponta
-  ctx.lineTo(-sz * 0.60,  sz * 0.55); // base esq
-  ctx.lineTo( sz * 0.60,  sz * 0.55); // base dir
+  ctx.moveTo(0,    -tipH);        // ponta do bico
+  ctx.lineTo(-hw,   pr * 0.18);  // base esq (some no "casco" abaixo)
+  ctx.lineTo( hw,   pr * 0.18);  // base dir
   ctx.closePath();
   ctx.fill();
 
-  // Camada colorida com pulsação
+  // Friso colorido da fase
   ctx.fillStyle   = col;
-  ctx.globalAlpha = 0.35 + 0.15 * Math.sin(enginePulse);
-  ctx.shadowBlur  = 32;
+  ctx.globalAlpha = 0.28 + 0.12 * Math.sin(enginePulse);
+  ctx.shadowBlur  = 30;
   ctx.beginPath();
-  ctx.moveTo(0,        -sz);
-  ctx.lineTo(-sz * 0.60,  sz * 0.55);
-  ctx.lineTo( sz * 0.60,  sz * 0.55);
+  ctx.moveTo(0,   -tipH);
+  ctx.lineTo(-hw,  pr * 0.18);
+  ctx.lineTo( hw,  pr * 0.18);
   ctx.closePath();
   ctx.fill();
 
+  // Nervura central (detalhe metálico)
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = 0.8;
+  ctx.shadowBlur  = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, -tipH);
+  ctx.lineTo(0,  pr * 0.05);
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Painel lateral do cockpit — sugere que a tela É a cápsula da nave
+  const panelAlpha = 0.18;
+  ctx.save();
+  ctx.globalAlpha = panelAlpha;
+  ctx.fillStyle   = '#aaaacc';
+  // Painel esq
+  ctx.beginPath();
+  ctx.moveTo(0,       H);
+  ctx.lineTo(0,       y + pr * 0.05);
+  ctx.lineTo(x - hw,  y + pr * 0.18);
+  ctx.lineTo(x - hw * 3.5, H);
+  ctx.closePath();
+  ctx.fill();
+  // Painel dir
+  ctx.beginPath();
+  ctx.moveTo(W,       H);
+  ctx.lineTo(W,       y + pr * 0.05);
+  ctx.lineTo(x + hw,  y + pr * 0.18);
+  ctx.lineTo(x + hw * 3.5, H);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }
 
